@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RT Clock — Configuration</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&family=Share+Tech+Mono&family=Orbitron:wght@500;700&family=Exo+2:wght@600;700&family=Oswald:wght@600;700&family=Bebas+Neue&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#07080F;--surf:#0E1018;--surf2:#141720;--brd:#252840;--brdh:#3A3F6A;--gold:#FFB800;--txt:#C8CCDE;--dim:#5A6080;--grn:#44BB66;--red:#EE4444;--blu:#4488DD;--ff:'Rajdhani',sans-serif;--mono:'Share Tech Mono',monospace;--title:'Orbitron',sans-serif}
+html,body{width:100%;min-height:100%;background:var(--bg);color:var(--txt);font-family:var(--ff);font-size:15px}
+.shell{display:grid;grid-template-columns:1fr 360px;grid-template-rows:62px 1fr;grid-template-areas:"hdr hdr" "main prev";min-height:100vh}
+header{grid-area:hdr;display:flex;align-items:center;justify-content:space-between;padding:0 26px;background:var(--surf);border-bottom:1px solid var(--brd)}
+.htitle{font-family:var(--title);font-size:.88rem;font-weight:700;color:var(--gold);letter-spacing:.18em;text-transform:uppercase}
+.hsub{font-size:.7rem;color:var(--dim);margin-top:2px}
+.hact{display:flex;gap:9px}
+.btn{font-family:var(--ff);font-size:.82rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:6px 15px;cursor:pointer;border-radius:2px;transition:all .14s}
+.btn-g{background:transparent;color:var(--dim);border:1px solid var(--brd)}.btn-g:hover{border-color:var(--brdh);color:var(--txt)}
+.btn-p{background:var(--gold);color:#000;border:none}.btn-p:hover{background:#FFC933}
+.btn-sm{padding:3px 9px;font-size:.74rem}
+.btn-add{background:transparent;color:var(--grn);border:1px dashed var(--grn);width:100%;margin-top:5px;font-family:var(--ff);font-size:.74rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:4px;cursor:pointer;border-radius:2px}.btn-add:hover{background:rgba(68,187,102,.08)}
+.btn-del{background:transparent;color:var(--red);border:1px solid var(--red);width:100%;margin-top:4px;font-family:var(--ff);font-size:.76rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:5px;cursor:pointer;border-radius:2px}.btn-del:hover{background:rgba(238,68,68,.1)}
+main{grid-area:main;overflow-y:auto;padding:20px 24px 80px;display:flex;flex-direction:column;gap:20px}
+.prev-panel{grid-area:prev;background:var(--surf);border-left:1px solid var(--brd);display:flex;flex-direction:column;align-items:center;padding:16px 13px;gap:10px;position:sticky;top:0;height:100vh;overflow-y:auto}
+.plbl{font-size:.66rem;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);align-self:flex-start}
+.pcw{width:300px;height:300px}.pcw canvas{width:100%;height:100%}
+.sec{background:var(--surf);border:1px solid var(--brd);border-radius:4px;overflow:hidden}
+.shdr{display:flex;align-items:center;justify-content:space-between;padding:10px 15px;background:var(--surf2);border-bottom:1px solid var(--brd);cursor:pointer;user-select:none}.shdr:hover{background:#181C28}
+.stitle{font-size:.76rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gold)}
+.chev{color:var(--dim);transition:transform .2s}.chev.op{transform:rotate(180deg)}
+.sbdy{padding:13px 15px;display:flex;flex-direction:column;gap:12px}.sbdy.col{display:none}
+.fr{display:grid;grid-template-columns:140px 1fr;align-items:center;gap:9px}.fr.full{grid-template-columns:1fr}
+.fl{font-size:.74rem;font-weight:600;letter-spacing:.06em;color:var(--dim);text-transform:uppercase}
+.fh{font-size:.66rem;color:var(--dim);margin-top:2px;line-height:1.4}
+input[type=text],input[type=number],select{background:var(--bg);color:var(--txt);border:1px solid var(--brd);border-radius:2px;padding:5px 8px;font-family:var(--ff);font-size:.84rem;width:100%;transition:border-color .14s}
+input[type=text]:focus,input[type=number]:focus,select:focus{outline:none;border-color:var(--gold)}
+select option{background:var(--surf2)}
+input[type=color]{width:34px;height:27px;padding:2px 3px;border:1px solid var(--brd);border-radius:2px;background:var(--bg);cursor:pointer}
+input[type=range]{width:100%;accent-color:var(--gold)}
+input[type=checkbox]{accent-color:var(--gold);width:13px;height:13px;cursor:pointer}
+.cr{display:flex;align-items:center;gap:6px}.cr input[type=text]{font-family:var(--mono);font-size:.76rem}
+.rr{display:flex;align-items:center;gap:6px}.rv{font-family:var(--mono);font-size:.78rem;color:var(--gold);min-width:34px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.mp{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:5px}
+.ms{color:var(--dim);font-size:.76rem;text-align:center}
+.tw{display:flex;align-items:center;gap:8px}
+.tog{position:relative;width:32px;height:17px;cursor:pointer;flex-shrink:0}
+.tog input{display:none}.tog-t{position:absolute;inset:0;background:#2a2a3a;border-radius:8px;transition:background .2s}
+.tog input:checked+.tog-t{background:var(--gold)}.tog-k{position:absolute;top:2px;left:2px;width:13px;height:13px;border-radius:50%;background:#fff;transition:left .2s}
+.tog input:checked~.tog-k{left:17px}.tl{font-size:.82rem;font-weight:600}
+.card{border:1px solid var(--brd);border-radius:3px;overflow:hidden}
+.chdr{display:flex;align-items:center;gap:7px;padding:8px 11px;background:var(--surf2);cursor:pointer;user-select:none}.chdr:hover{background:#181C28}
+.csw{width:10px;height:10px;border-radius:2px;flex-shrink:0}.ct{font-weight:700;font-size:.82rem;flex:1}
+.cst{font-size:.68rem;color:var(--dim)}.cchev{color:var(--dim);font-size:.7rem;transition:transform .2s;flex-shrink:0}.cchev.op{transform:rotate(180deg)}
+.cbdy{padding:11px;display:flex;flex-direction:column;gap:9px}.cbdy.col{display:none}
+.sub{background:rgba(0,0,0,.3);border:1px solid var(--brd);border-radius:2px;padding:8px 10px;display:flex;flex-direction:column;gap:8px}
+.sub-t{font-size:.68rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.badge{display:inline-block;font-size:.6rem;font-weight:700;letter-spacing:.04em;padding:1px 5px;border-radius:2px;text-transform:uppercase}
+.bi{background:rgba(68,136,221,.15);color:var(--blu);border:1px solid rgba(68,136,221,.3)}
+.bd{background:rgba(238,170,68,.15);color:#EEAA44;border:1px solid rgba(238,170,68,.3)}
+.font-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+.fopt{padding:6px 7px;border:1px solid var(--brd);border-radius:2px;cursor:pointer;text-align:center;font-size:.94rem;transition:all .13s;background:var(--bg)}.fopt:hover{border-color:var(--brdh)}.fopt.sel{border-color:var(--gold);color:var(--gold)}
+.shape-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:4px}
+.sopt{padding:5px 2px;border:1px solid var(--brd);border-radius:2px;cursor:pointer;text-align:center;transition:all .13s;background:var(--bg);display:flex;flex-direction:column;align-items:center;gap:2px}
+.sopt:hover{border-color:var(--brdh)}.sopt.sel{border-color:var(--gold)}
+.sopt canvas{display:block}.sol{font-size:.58rem;color:var(--dim);letter-spacing:.04em;text-transform:uppercase}.sopt.sel .sol{color:var(--gold)}
+/* T0 shape grid — 5 cols */
+.t0sg{display:grid;grid-template-columns:repeat(5,1fr);gap:4px}
+.t0so{padding:5px 2px;border:1px solid var(--brd);border-radius:2px;cursor:pointer;text-align:center;transition:all .13s;background:var(--bg);display:flex;flex-direction:column;align-items:center;gap:2px}
+.t0so:hover{border-color:var(--brdh)}.t0so.sel{border-color:var(--gold)}
+.t0so canvas{display:block}.t0sol{font-size:.58rem;color:var(--dim);letter-spacing:.04em;text-transform:uppercase}.t0so.sel .t0sol{color:var(--gold)}
+/* Dial texture grid */
+.face-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
+.fto{padding:4px 2px;border:1px solid var(--brd);border-radius:2px;cursor:pointer;text-align:center;transition:all .13s;background:var(--bg);display:flex;flex-direction:column;align-items:center;gap:2px}
+.fto:hover{border-color:var(--brdh)}.fto.sel{border-color:var(--gold);color:var(--gold)}
+.fto canvas{display:block}.ftol{font-size:.58rem;color:var(--dim);letter-spacing:.03em;text-transform:uppercase}.fto.sel .ftol{color:var(--gold)}
+.sec-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+.seopt{padding:7px;border:1px solid var(--brd);border-radius:2px;cursor:pointer;text-align:center;transition:all .13s;background:var(--bg)}.seopt:hover{border-color:var(--brdh)}.seopt.sel{border-color:var(--gold);color:var(--gold)}
+.son{font-size:.78rem;font-weight:700;letter-spacing:.04em}.sod{font-size:.62rem;color:var(--dim);margin-top:1px}
+.seg-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.seg-card{border:1px solid var(--brd);border-radius:2px;padding:8px 9px;display:flex;flex-direction:column;gap:6px;background:var(--bg)}
+.seg-t{font-size:.7rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
+.div{border:none;border-top:1px solid var(--brd);margin:1px 0}
+.save-bar{position:fixed;bottom:0;left:0;right:360px;background:var(--surf);border-top:1px solid var(--brd);padding:10px 24px;display:flex;align-items:center;justify-content:space-between;z-index:100}
+.ss{font-size:.74rem;color:var(--dim);letter-spacing:.04em}.ss.saved{color:var(--grn)}.ss.unsaved{color:var(--gold)}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--brd);border-radius:3px}
+</style>
+</head>
+<body>
+<div class="shell">
+<header>
+  <div><div class="htitle">RT Clock — Configuration</div><div class="hsub">Changes preview live · Save to push to clock</div></div>
+  <div class="hact">
+    <button class="btn btn-g" onclick="resetToDefaults()">Reset Defaults</button>
+    <button class="btn btn-g" onclick="exportCfg()">Export JSON</button>
+    <button class="btn btn-p" onclick="saveAndLaunch()">Save &amp; Launch Clock</button>
+  </div>
+</header>
+<main>
+
+<!-- GLOBAL -->
+<div class="sec">
+  <div class="shdr" onclick="ts('global')"><span class="stitle">Global Display</span><span class="chev op" id="chev-global">▼</span></div>
+  <div class="sbdy" id="body-global">
+    <div class="fr full"><label class="fl">Display Font</label><div class="font-grid" id="fontGrid"></div></div>
+    <hr class="div">
+    <div class="two">
+      <div><label class="fl">Background</label><div class="cr" style="margin-top:4px"><input type="color" id="g_bg" onchange="applyG()"><input type="text" id="g_bgT" style="width:78px" oninput="cpS('g_bgT','g_bg')" onchange="applyG()"></div></div>
+      <div><label class="fl">Digital Color</label><div class="cr" style="margin-top:4px"><input type="color" id="g_dig" onchange="applyG()"><input type="text" id="g_digT" style="width:78px" oninput="cpS('g_digT','g_dig')" onchange="applyG()"></div></div>
+    </div>
+    <hr class="div">
+    <label class="fl">Minute Hand Length</label>
+    <div class="tw" style="margin-top:4px"><label class="tog"><input type="checkbox" id="g_snap" onchange="applyG()"><div class="tog-t"></div><div class="tog-k"></div></label><span class="tl" id="snapLbl">Snap to outermost ring</span></div>
+    <div id="manRow" style="display:none"><div class="rr" style="margin-top:4px"><input type="range" id="g_mLen" min="100" max="450" step="5" oninput="rrS('g_mLen','g_mLenV');applyG()"><span class="rv" id="g_mLenV">—</span></div></div>
+    <hr class="div">
+    <label class="fl">Hand Shape</label>
+    <div class="shape-grid" id="shapeGrid" style="margin-top:4px"></div>
+    <hr class="div">
+    <div class="two">
+      <div><label class="fl">Hour Width</label><div class="rr" style="margin-top:4px"><input type="range" id="g_hW" min="2" max="22" oninput="rrS('g_hW','g_hWV');applyG()"><span class="rv" id="g_hWV">—</span></div></div>
+      <div><label class="fl">Hour Color</label><div class="cr" style="margin-top:4px"><input type="color" id="g_hC" onchange="applyG()"><input type="text" id="g_hCT" style="width:72px" oninput="cpS('g_hCT','g_hC')" onchange="applyG()"></div></div>
+    </div>
+    <div class="two">
+      <div><label class="fl">Minute Width</label><div class="rr" style="margin-top:4px"><input type="range" id="g_mW" min="2" max="16" oninput="rrS('g_mW','g_mWV');applyG()"><span class="rv" id="g_mWV">—</span></div></div>
+      <div><label class="fl">Minute Color</label><div class="cr" style="margin-top:4px"><input type="color" id="g_mC" onchange="applyG()"><input type="text" id="g_mCT" style="width:72px" oninput="cpS('g_mCT','g_mC')" onchange="applyG()"></div></div>
+    </div>
+    <hr class="div">
+    <label class="fl">Second Hand Style</label>
+    <div class="sec-grid" id="secGrid" style="margin-top:4px"></div>
+    <div class="two" style="margin-top:6px">
+      <div><label class="fl">Second Color</label><div class="cr" style="margin-top:4px"><input type="color" id="g_sC" onchange="applyG()"><input type="text" id="g_sCT" style="width:72px" oninput="cpS('g_sCT','g_sC')" onchange="applyG()"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- FACE -->
+<div class="sec">
+  <div class="shdr" onclick="ts('face')"><span class="stitle">Clock Face</span><span class="chev op" id="chev-face">▼</span></div>
+  <div class="sbdy" id="body-face">
+    <label class="fl">Dial Texture</label>
+    <div class="face-grid" id="faceTexGrid" style="margin-top:4px"></div>
+    <hr class="div">
+    <label class="fl">Quadrant Colors</label>
+    <div class="seg-grid" id="segGrid" style="margin-top:4px"></div>
+    <hr class="div">
+    <label class="fl">Minute Track</label>
+    <select id="f_tick" style="margin-top:4px" onchange="cfg.face.tickStyle=this.value;mu();rp()">
+      <option value="simple">Simple</option>
+      <option value="railway">Railway (classic watchmaking)</option>
+      <option value="none">None</option>
+    </select>
+    <hr class="div">
+    <div class="tw"><label class="tog"><input type="checkbox" id="f_nums" onchange="cfg.face.showHourNumerals=this.checked;mu();rp()"><div class="tog-t"></div><div class="tog-k"></div></label><span class="tl">Show hour numerals (1–12)</span></div>
+    <div class="tw"><label class="tog"><input type="checkbox" id="f_lbls" onchange="cfg.face.showQuadrantLabels=this.checked;mu();rp()"><div class="tog-t"></div><div class="tog-k"></div></label><span class="tl">Show quadrant time labels</span></div>
+  </div>
+</div>
+
+<!-- RINGS -->
+<div class="sec">
+  <div class="shdr" onclick="ts('rings')"><span class="stitle">Rings &amp; Arcs</span><span class="chev op" id="chev-rings">▼</span></div>
+  <div class="sbdy" id="body-rings">
+    <p class="fh">Rings render outside-in (top = outermost). Rings sharing a radius layer by list order — lower items paint on top.</p>
+    <div id="ringList"></div>
+    <button class="btn-add" onclick="addRing()">+ Add Ring</button>
+  </div>
+</div>
+
+<!-- ALARMS -->
+<div class="sec">
+  <div class="shdr" onclick="ts('alarms')"><span class="stitle">Alarms</span><span class="chev op" id="chev-alarms">▼</span></div>
+  <div class="sbdy" id="body-alarms">
+    <p class="fh">Alarms with a PI flag auto-resolve when that flag clears. Escalating alarms increase frequency near the deadline.</p>
+    <div id="alarmList"></div>
+    <button class="btn-add" onclick="addAlarm()">+ Add Alarm</button>
+  </div>
+</div>
+
+<!-- T=0 -->
+<div class="sec">
+  <div class="shdr" onclick="ts('t0')"><span class="stitle">T=0 Marker (Top of Hour)</span><span class="chev op" id="chev-t0">▼</span></div>
+  <div class="sbdy" id="body-t0">
+    <p class="fh">The marker at 12 o'clock — master T=0 reference spanning all rings.</p>
+    <label class="fl">Shape</label>
+    <div class="t0sg" id="t0ShapeGrid" style="margin-top:4px"></div>
+    <div class="two" style="margin-top:8px">
+      <div><label class="fl">Color</label><div class="cr" style="margin-top:4px"><input type="color" id="t0C" onchange="applyT0()"><input type="text" id="t0CT" style="width:72px" oninput="cpS('t0CT','t0C')" onchange="applyT0()"></div></div>
+      <div><label class="fl">Width (half)</label><div class="rr" style="margin-top:4px"><input type="range" id="t0W" min="2" max="24" oninput="rrS('t0W','t0WV');applyT0()"><span class="rv" id="t0WV">8</span></div></div>
+    </div>
+    <div><label class="fl">Length</label>
+      <div class="fh">1.0 = full ring depth · 0.5 = half length inward from outer edge</div>
+      <div class="rr" style="margin-top:4px"><input type="range" id="t0L" min="0.1" max="1.0" step="0.05" oninput="rrS('t0L','t0LV');applyT0()"><span class="rv" id="t0LV">1.0</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- LABEL STYLES -->
+<div class="sec">
+  <div class="shdr" onclick="ts('labels')"><span class="stitle">Label Styles</span><span class="chev op" id="chev-labels">▼</span></div>
+  <div class="sbdy" id="body-labels">
+    <p class="fh">Global defaults for ring labels. Individual rings can override in their card.</p>
+    <div class="two">
+      <div><label class="fl">Font Size</label><div class="rr" style="margin-top:4px"><input type="range" id="ls_sz" min="8" max="24" oninput="rrS('ls_sz','ls_szV');applyLS()"><span class="rv" id="ls_szV">—</span></div></div>
+      <div><label class="fl">Color</label><div class="cr" style="margin-top:4px"><input type="color" id="ls_col" onchange="applyLS()"><input type="text" id="ls_colT" style="width:72px" oninput="cpS('ls_colT','ls_col')" onchange="applyLS()"></div></div>
+    </div>
+    <div class="tw"><label class="tog"><input type="checkbox" id="ls_curve" onchange="applyLS()"><div class="tog-t"></div><div class="tog-k"></div></label><span class="tl">Curved text (follows arc)</span></div>
+    <div class="tw"><label class="tog"><input type="checkbox" id="ls_center" onchange="applyLS()"><div class="tog-t"></div><div class="tog-k"></div></label><span class="tl">Centre label within shape</span></div>
+  </div>
+</div>
+
+</main>
+
+<!-- PREVIEW -->
+<div class="prev-panel">
+  <div class="plbl">Live Preview</div>
+  <div class="pcw"><canvas id="pCanvas" width="600" height="600"></canvas></div>
+  <div style="font-size:.65rem;color:var(--dim);text-align:center;line-height:1.5">Preview tracks current time.</div>
+</div>
+</div>
+
+<!-- SAVE BAR -->
+<div class="save-bar">
+  <span class="ss unsaved" id="saveStatus">Unsaved changes</span>
+  <div style="display:flex;gap:9px">
+    <button class="btn btn-g" onclick="window.open('rt-clock.html','_blank')">Open Clock</button>
+    <button class="btn btn-p" onclick="saveCfg()">Save Config</button>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  DEFAULT CONFIG
+// ═══════════════════════════════════════════════════════
+const DC={
+  global:{fontFamily:'Kalinga',monoFont:'Kalinga',bgColor:'#000000',digitalColor:'#FFB800',
+    minuteHandSnap:true,minuteHandLength:420,minuteHandWidth:6,minuteHandColor:'#E0E0E0',
+    hourHandWidth:10,hourHandColor:'#CCCCCC',secondHandColor:'#FFB800',handShape:'baton',secondStyle:'quartz'},
+  face:{texture:'none',segments:[
+    {label:'00-15',darkColor:'#1E3A18',lightColor:'#2E5424'},
+    {label:'15-30',darkColor:'#28164A',lightColor:'#3E246C'},
+    {label:'30-45',darkColor:'#421212',lightColor:'#621A1A'},
+    {label:'45-00',darkColor:'#101A2C',lightColor:'#182844'}],
+    tickStyle:'simple',showHourNumerals:false,showQuadrantLabels:true},
+  t0Caret:{color:'#CC1111',width:8,shape:'rectangle',lengthRatio:1.0},
+  rings:[
+    {id:'r1',label:'T-75 Interval',type:'interval',color:'#1A3A6A',thickness:44,startMin:0,endMin:60,radiusGroup:'',
+     over60:{enabled:true,subArcStart:45,subArcEnd:60,subArcColor:'#0C1830',subArcThicknessRatio:0.45},labelStyle:{inherit:true}},
+    {id:'r2',label:'T-77 Deadline',type:'deadline',color:'#1E50A8',thickness:33,startMin:38,endMin:43,radiusGroup:'r1',
+     caretMin:43,caretColor:'#5599EE',caretBridgesTo:'r1',caretLengthRatio:1.0,labelStyle:{inherit:true}},
+    {id:'r3',label:'T-55 Interval',type:'interval',color:'#245020',thickness:41,startMin:5,endMin:60,radiusGroup:'',labelStyle:{inherit:true}},
+    {id:'r4',label:'T-57 Deadline',type:'deadline',color:'#367A28',thickness:31,startMin:58,endMin:3,radiusGroup:'r3',
+     caretMin:3,caretColor:'#55CC44',caretBridgesTo:'r3',caretLengthRatio:1.0,labelStyle:{inherit:true}},
+    {id:'r5',label:'T-40 Interval',type:'interval',color:'#3A1E5C',thickness:38,startMin:20,endMin:60,radiusGroup:'',labelStyle:{inherit:true}},
+    {id:'r6',label:'T-42 Deadline',type:'deadline',color:'#58309A',thickness:31,startMin:13,endMin:18,radiusGroup:'r5',
+     caretMin:18,caretColor:'#AA77EE',caretBridgesTo:'r5',caretLengthRatio:1.0,labelStyle:{inherit:true}},
+  ],
+  labelStyle:{fontSize:12,color:'rgba(200,220,255,0.75)',curved:false,centered:true},
+  alarms:[
+    {id:'a1',label:'Basepoint Submission',startMin:41,endMin:45,enabled:true,escalating:true,piFlag:'bpSent',indicatorText:'SUBMIT BASEPOINTS',indicatorColor:'gold'},
+    {id:'a2',label:'T-55 Imbalance',startMin:1,endMin:5,enabled:true,escalating:false,piFlag:'t55Flag',indicatorText:'T-55: {eimBal} MW IMBALANCE',indicatorColor:'magenta'},
+    {id:'a3',label:'T-40 Imbalance',startMin:13,endMin:18,enabled:true,escalating:false,piFlag:'t40Flag',indicatorText:'T-40: {eimBal} MW IMBALANCE',indicatorColor:'magenta'},
+    {id:'a4',label:'T-77 Warning',startMin:38,endMin:43,enabled:true,escalating:false,piFlag:null,indicatorText:'T-77 DEADLINE IN 5 MINUTES',indicatorColor:'gold'},
+    {id:'a5',label:'T-57 Deadline',startMin:58,endMin:63,enabled:true,escalating:false,piFlag:null,indicatorText:'T-57 DEADLINE',indicatorColor:'gold'},
+  ],
+};
+let cfg=dc();let uidc=100;
+function dc(){return JSON.parse(JSON.stringify(DC))}
+function nid(){return 'x'+(++uidc)}
+function pad(n){return String(n).padStart(2,'0')}
+try{const r=localStorage.getItem('rtClockConfig');if(r)cfg=JSON.parse(r);}catch(e){}
+
+// ═══════════════════════════════════════════════════════
+//  OPTION TABLES
+// ═══════════════════════════════════════════════════════
+const FONTS=[{n:'Kalinga',s:'Kalinga'},{n:'Rajdhani',s:'Rajdhani'},{n:'Orbitron',s:'Orbitron'},{n:'Exo 2',s:'Exo 2'},{n:'Oswald',s:'Oswald'},{n:'Bebas Neue',s:'BEBAS'}];
+const SHAPES=[{id:'baton',l:'Baton'},{id:'triangle',l:'Dauphine'},{id:'sword',l:'Sword'},{id:'skeleton',l:'Skeleton'},{id:'submariner',l:'Sub-mariner'},{id:'twodoor',l:'Two-Door'}];
+const SEC_STYLES=[{id:'quartz',n:'Quartz',d:'1 tick/sec'},{id:'mechanical',n:'Mechanical',d:'8 ticks/sec'},{id:'springdrive',n:'Spring Drive',d:'Smooth sweep'}];
+const TEXTURES=[{id:'none',l:'None'},{id:'guilloché',l:'Guilloché'},{id:'sunburst',l:'Sunburst'},{id:'fumé',l:'Fumé'},{id:'sector',l:'Sector'},{id:'grand-seiko',l:'Grd Seiko'},{id:'regal-oak',l:'Regal Oak'},{id:'nemo',l:'Nemo'},{id:'goldeneye',l:'Goldeneye'}];
+const T0_SHAPES=[{id:'rectangle',l:'Rect'},{id:'triangle',l:'Triangle'},{id:'diamond',l:'Diamond'},{id:'trapezoid',l:'Trapezoid'},{id:'keystone',l:'Keystone'}];
+
+// ═══════════════════════════════════════════════════════
+//  PREVIEW CANVAS
+// ═══════════════════════════════════════════════════════
+const pC=document.getElementById('pCanvas');
+const pX=pC.getContext('2d');
+const PCX=300,PCY=300,PMR=288;
+
+// Same angle function as the clock — minute 0 = top = -π/2
+function mTA(min){return(min/60)*Math.PI*2-Math.PI/2}
+
+function pFillArc(ro,ri,s,e,col){
+  pX.save();pX.fillStyle=col;pX.beginPath();
+  if(s===0&&e===60){pX.arc(PCX,PCY,ro,0,Math.PI*2,false);pX.arc(PCX,PCY,ri,0,Math.PI*2,true);}
+  else{const a1=mTA(s),a2=mTA(e),top=-Math.PI/2;
+    if(e>s){pX.arc(PCX,PCY,ro,a1,a2,false);pX.arc(PCX,PCY,ri,a2,a1,true);}
+    else{pX.arc(PCX,PCY,ro,a1,top+Math.PI*2,false);pX.arc(PCX,PCY,ro,top,a2,false);pX.arc(PCX,PCY,ri,a2,top,true);pX.arc(PCX,PCY,ri,top+Math.PI*2,a1,true);}
+  }pX.closePath();pX.fill();pX.restore();
+}
+function pTick(ro,ri,m,col,lw){
+  const a=mTA(m);pX.save();pX.strokeStyle=col;pX.lineWidth=lw||3;pX.lineCap='round';
+  pX.beginPath();pX.moveTo(PCX+ro*Math.cos(a),PCY+ro*Math.sin(a));pX.lineTo(PCX+ri*Math.cos(a),PCY+ri*Math.sin(a));pX.stroke();pX.restore();
+}
+
+// T0 shape in preview — no context rotation, drawn in world coords
+function pDrawT0(ro,ri,color,halfW,shape,lr){
+  lr=lr||1.0;
+  const len=(ro-ri)*lr, riA=ro-len;
+  const outerY=PCY-ro, innerY=PCY-riA, midY=(outerY+innerY)/2;
+  pX.save();pX.fillStyle=color;pX.beginPath();
+  switch(shape||'rectangle'){
+    case 'rectangle': pX.rect(PCX-halfW,outerY,halfW*2,len);break;
+    case 'triangle':  pX.moveTo(PCX,outerY);pX.lineTo(PCX-halfW,innerY);pX.lineTo(PCX+halfW,innerY);break;
+    case 'diamond':   pX.moveTo(PCX,outerY);pX.lineTo(PCX-halfW,midY);pX.lineTo(PCX,innerY);pX.lineTo(PCX+halfW,midY);break;
+    case 'trapezoid': pX.moveTo(PCX-halfW,outerY);pX.lineTo(PCX+halfW,outerY);pX.lineTo(PCX+halfW*0.5,innerY);pX.lineTo(PCX-halfW*0.5,innerY);break;
+    case 'keystone':  pX.moveTo(PCX-halfW*0.5,outerY);pX.lineTo(PCX+halfW*0.5,outerY);pX.lineTo(PCX+halfW,innerY);pX.lineTo(PCX-halfW,innerY);break;
+  }
+  pX.closePath();pX.fill();pX.restore();
+}
+
+function getLayout(){
+  const gap=4,scale=PMR/450,grO={};const layout=[];let cursor=PMR;
+  cfg.rings.forEach(ring=>{
+    if(ring.radiusGroup&&grO[ring.radiusGroup]!==undefined){
+      const leader=layout.find(l=>l.ring.id===ring.radiusGroup);
+      if(leader){layout.push({ro:leader.ro,ri:leader.ri,ring,shared:true});return;}
+    }
+    const ro=cursor,ri=ro-ring.thickness*scale;
+    grO[ring.id]=ro;layout.push({ro:Math.max(ri+3,ro),ri:Math.max(ri,0),ring,shared:false});
+    cursor=ri-gap;
+  });
+  return layout;
+}
+
+function arcMid(s,e){if(e>=s)return(s+e)/2;const sp=(60-s)+e;const m=s+sp/2;return m>=60?m-60:m;}
+
+// ── Texture (preview version, reuses same logic) ──
+function mb32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+
+function drawTex(faceR,texId){
+  if(!texId||texId==='none')return;
+  pX.save();
+  switch(texId){
+    case 'guilloché':
+      pX.globalAlpha=0.045;for(let i=0;i<36;i++){const a=i*Math.PI/18;pX.beginPath();pX.moveTo(PCX,PCY);pX.arc(PCX,PCY,faceR,a,a+Math.PI/18);pX.closePath();pX.fillStyle=i%2?'#000':'#fff';pX.fill();}
+      pX.globalAlpha=0.055;for(let r=faceR*0.08;r<faceR;r+=faceR*0.07){pX.beginPath();pX.arc(PCX,PCY,r,0,Math.PI*2);pX.strokeStyle='rgba(255,255,255,1)';pX.lineWidth=0.6;pX.stroke();}break;
+    case 'sunburst':
+      pX.globalAlpha=0.10;for(let i=0;i<120;i++){const a=(i/120)*Math.PI*2;pX.beginPath();pX.moveTo(PCX,PCY);pX.lineTo(PCX+faceR*Math.cos(a),PCY+faceR*Math.sin(a));pX.strokeStyle=i%2?'rgba(255,255,255,.3)':'rgba(255,255,255,.9)';pX.lineWidth=0.8;pX.stroke();}
+      pX.globalAlpha=1;const sg=pX.createRadialGradient(PCX,PCY,0,PCX,PCY,faceR);sg.addColorStop(0,'rgba(255,255,255,.14)');sg.addColorStop(0.5,'rgba(255,255,255,.04)');sg.addColorStop(1,'rgba(0,0,0,.12)');pX.fillStyle=sg;pX.beginPath();pX.arc(PCX,PCY,faceR,0,Math.PI*2);pX.fill();break;
+    case 'fumé':
+      const fg=pX.createRadialGradient(PCX,PCY,faceR*0.05,PCX,PCY,faceR);fg.addColorStop(0,'rgba(180,200,255,.18)');fg.addColorStop(0.45,'rgba(100,120,180,.06)');fg.addColorStop(1,'rgba(0,0,0,.55)');pX.fillStyle=fg;pX.beginPath();pX.arc(PCX,PCY,faceR,0,Math.PI*2);pX.fill();break;
+    case 'sector':
+      for(let i=0;i<8;i++){const a1=(i/8)*Math.PI*2,a2=((i+1)/8)*Math.PI*2;pX.beginPath();pX.moveTo(PCX,PCY);pX.arc(PCX,PCY,faceR,a1,a2);pX.closePath();pX.fillStyle=i%2?'rgba(0,0,0,.08)':'rgba(255,255,255,.06)';pX.fill();}
+      pX.globalAlpha=0.07;for(let y=PCY-faceR;y<PCY+faceR;y+=faceR*0.095){const dx=Math.sqrt(Math.max(0,faceR*faceR-(y-PCY)**2));pX.beginPath();pX.moveTo(PCX-dx,y);pX.lineTo(PCX+dx,y);pX.strokeStyle='rgba(200,220,255,1)';pX.lineWidth=0.8;pX.stroke();}break;
+    case 'grand-seiko':
+      pX.globalAlpha=0.08;for(let x=PCX-faceR;x<PCX+faceR;x+=faceR*0.025){const dy=Math.sqrt(Math.max(0,faceR*faceR-(x-PCX)**2));pX.beginPath();pX.moveTo(x,PCY-dy);pX.lineTo(x,PCY+dy);pX.strokeStyle='rgba(255,255,255,1)';pX.lineWidth=0.5;pX.stroke();}
+      pX.globalAlpha=0.05;for(let d=-faceR*2;d<faceR*2;d+=faceR*0.04){pX.beginPath();pX.moveTo(PCX-faceR,PCY+d-faceR);pX.lineTo(PCX+faceR,PCY+d+faceR);pX.strokeStyle='rgba(200,230,255,1)';pX.lineWidth=0.4;pX.stroke();}
+      pX.globalAlpha=0.15;const rng=mb32(42);for(let i=0;i<80;i++){const a=rng()*Math.PI*2,dist=rng()*faceR*0.95;pX.beginPath();pX.arc(PCX+dist*Math.cos(a),PCY+dist*Math.sin(a),rng()*1.2+0.3,0,Math.PI*2);pX.fillStyle='rgba(255,255,255,1)';pX.fill();}break;
+    case 'regal-oak':
+      pX.globalAlpha=0.09;const sq=faceR*0.055;
+      for(let y=PCY-faceR;y<PCY+faceR;y+=sq)for(let x=PCX-faceR;x<PCX+faceR;x+=sq){if((x-PCX)**2+(y-PCY)**2>faceR*faceR)continue;const col=(Math.round((x-PCX)/sq)+Math.round((y-PCY)/sq))%2===0;pX.fillStyle=col?'rgba(255,255,255,1)':'rgba(0,0,0,1)';pX.fillRect(x,y,sq,sq);}
+      pX.globalAlpha=0.12;pX.strokeStyle='rgba(255,255,255,.4)';pX.lineWidth=0.4;
+      for(let y=PCY-faceR;y<PCY+faceR;y+=sq){const dx=Math.sqrt(Math.max(0,faceR*faceR-(y-PCY)**2));pX.beginPath();pX.moveTo(PCX-dx,y);pX.lineTo(PCX+dx,y);pX.stroke();}
+      for(let x=PCX-faceR;x<PCX+faceR;x+=sq){const dy=Math.sqrt(Math.max(0,faceR*faceR-(x-PCX)**2));pX.beginPath();pX.moveTo(x,PCY-dy);pX.lineTo(x,PCY+dy);pX.stroke();}break;
+    case 'nemo':
+      const sh=faceR*0.072;
+      for(let y=PCY-faceR;y<PCY+faceR;y+=sh){const dx=Math.sqrt(Math.max(0,faceR*faceR-(y-PCY)**2));if(dx<2)continue;const even=Math.round((y-(PCY-faceR))/sh)%2===0;const sg3=pX.createLinearGradient(PCX-dx,y,PCX+dx,y+sh);if(even){sg3.addColorStop(0,'rgba(255,255,255,.08)');sg3.addColorStop(.5,'rgba(255,255,255,.12)');sg3.addColorStop(1,'rgba(255,255,255,.08)');}else{sg3.addColorStop(0,'rgba(0,0,0,.08)');sg3.addColorStop(.5,'rgba(0,0,0,.13)');sg3.addColorStop(1,'rgba(0,0,0,.08)');}pX.fillStyle=sg3;pX.beginPath();pX.moveTo(PCX-dx,y);pX.lineTo(PCX+dx,y);pX.lineTo(PCX+dx,y+sh);pX.lineTo(PCX-dx,y+sh);pX.closePath();pX.fill();pX.globalAlpha=0.18;pX.beginPath();pX.moveTo(PCX-dx,y);pX.lineTo(PCX+dx,y);pX.strokeStyle='rgba(255,255,255,.5)';pX.lineWidth=0.6;pX.stroke();pX.globalAlpha=1;}break;
+    case 'goldeneye':
+      pX.globalAlpha=0.11;const wa=faceR*0.04,wl=faceR*0.22,bs=faceR*0.075;
+      for(let band=0;band<faceR*2/bs+2;band++){const bY=PCY-faceR+band*bs;pX.beginPath();let first=true;for(let x=PCX-faceR-10;x<=PCX+faceR+10;x+=2){const y=bY+Math.sin((x/wl)*Math.PI*2)*wa;if(first){pX.moveTo(x,y);first=false;}else pX.lineTo(x,y);}pX.strokeStyle=band%2===0?'rgba(100,160,255,.9)':'rgba(200,230,255,.6)';pX.lineWidth=band%2===0?1.2:0.6;pX.stroke();}
+      pX.globalCompositeOperation='destination-in';pX.beginPath();pX.arc(PCX,PCY,faceR,0,Math.PI*2);pX.fill();pX.globalCompositeOperation='source-over';break;
+  }
+  pX.restore();
+}
+
+// ── Hand drawing for preview ──
+function pDrawHand(angle,len,width,color,shape){
+  // Tip at (+len,0), tail at (-tail,0), width in ±y
+  pX.save();pX.translate(PCX,PCY);pX.rotate(angle);pX.shadowColor='rgba(0,0,0,.5)';pX.shadowBlur=3;
+  const w=width,tail=8;
+  switch(shape||'baton'){
+    case 'baton': pX.beginPath();pX.moveTo(-tail,-w/2);pX.lineTo(len,-w/2);pX.lineTo(len,w/2);pX.lineTo(-tail,w/2);pX.closePath();pX.fillStyle=color;pX.fill();break;
+    case 'triangle': pX.beginPath();pX.moveTo(len,0);pX.lineTo(-tail,-w/2);pX.lineTo(-tail,w/2);pX.closePath();pX.fillStyle=color;pX.fill();break;
+    case 'sword': pX.beginPath();pX.moveTo(len,0);pX.lineTo(len*0.3,-w/2);pX.lineTo(-tail,-w*0.15);pX.lineTo(-tail,w*0.15);pX.lineTo(len*0.3,w/2);pX.closePath();pX.fillStyle=color;pX.fill();break;
+    case 'skeleton': pX.beginPath();pX.moveTo(-tail,-w/2);pX.lineTo(len,-w/2);pX.lineTo(len,w/2);pX.lineTo(-tail,w/2);pX.closePath();pX.strokeStyle=color;pX.lineWidth=1.5;pX.stroke();break;
+    case 'submariner':{const lr=w,tx=len;pX.beginPath();pX.moveTo(-tail,-w*0.42);pX.lineTo(tx-lr*1.1,-w*0.42);pX.lineTo(tx-lr*1.1,w*0.42);pX.lineTo(-tail,w*0.42);pX.closePath();pX.fillStyle=color;pX.fill();[0,120,240].forEach(d=>{const r=d*Math.PI/180;pX.beginPath();pX.arc(tx+Math.cos(r)*lr,Math.sin(r)*lr,lr,0,Math.PI*2);pX.fillStyle=color;pX.fill();});pX.beginPath();pX.arc(tx,0,lr*0.44,0,Math.PI*2);pX.fillStyle='rgba(0,0,0,.75)';pX.fill();break;}
+    case 'twodoor':{const dr=w*1.4,dx=len-dr*0.9,sw=w*0.42;pX.beginPath();pX.moveTo(-tail,-sw*1.3);pX.lineTo(dx,-sw);pX.lineTo(dx,sw);pX.lineTo(-tail,sw*1.3);pX.closePath();pX.fillStyle=color;pX.fill();pX.beginPath();pX.arc(dx,0,dr,0,Math.PI*2);pX.fillStyle=color;pX.fill();pX.beginPath();pX.arc(dx,0,dr*0.38,0,Math.PI*2);pX.fillStyle='rgba(0,0,0,.65)';pX.fill();break;}
+  }
+  pX.restore();
+}
+function pDrawMin(angle,len,width,color,shape){
+  const tail=8;
+  if(shape==='submariner'){
+    pX.save();pX.translate(PCX,PCY);pX.rotate(angle);
+    pX.beginPath();pX.moveTo(-tail,-width/2);pX.lineTo(len,-width/2);pX.lineTo(len,width/2);pX.lineTo(-tail,width/2);pX.closePath();pX.fillStyle=color;pX.fill();
+    const hw=width*0.30;pX.beginPath();pX.rect(len*0.07,-hw,len*0.80,hw*2);pX.fillStyle='rgba(0,0,0,.72)';pX.fill();pX.restore();
+  } else if(shape==='twodoor'){
+    pX.save();pX.translate(PCX,PCY);pX.rotate(angle);
+    const sw=Math.max(2,width*0.30);
+    pX.beginPath();pX.moveTo(-tail,sw*1.5);pX.lineTo(-len*0.18,sw);pX.lineTo(len,sw);pX.lineTo(len,-sw);pX.lineTo(-len*0.18,-sw);pX.lineTo(-tail,-sw*1.5);pX.closePath();pX.fillStyle=color;pX.fill();pX.restore();
+  } else pDrawHand(angle,len,width,color,shape);
+}
+function pDrawSec(angle,len,color,lollipop){
+  // Tip at (+len,0), tail at (-18,0)
+  pX.save();pX.translate(PCX,PCY);pX.rotate(angle);pX.strokeStyle=color;pX.lineWidth=1.5;pX.lineCap='round';
+  pX.beginPath();pX.moveTo(-18,0);pX.lineTo(len,0);pX.stroke();
+  if(lollipop){const dx=len*0.72;pX.beginPath();pX.arc(dx,0,4,0,Math.PI*2);pX.fillStyle=color;pX.fill();pX.beginPath();pX.arc(dx,0,2,0,Math.PI*2);pX.fillStyle='rgba(0,0,0,.75)';pX.fill();}
+  pX.restore();
+}
+function pSecAngle(now){
+  const s=now.getSeconds(),ms=now.getMilliseconds(),st=cfg.global.secondStyle||'quartz';
+  if(st==='springdrive')return mTA((s+ms/1000)/60*60);
+  if(st==='mechanical')return mTA((s+Math.floor(ms/125)/8)/60*60);
+  return mTA(s/60*60);
+}
+
+// ── Curved label ──
+function drawCurvedTxt(text,r,midMin,sz,col){
+  if(!text)return;const chars=text.split('');
+  pX.font=`bold ${sz}px ${cfg.global.fontFamily},sans-serif`;
+  const total=chars.reduce((s,c)=>s+pX.measureText(c).width/r,0);
+  let ang=mTA(midMin)-total/2;
+  pX.save();pX.fillStyle=col;
+  chars.forEach(ch=>{pX.font=`bold ${sz}px ${cfg.global.fontFamily},sans-serif`;const w=pX.measureText(ch).width/r;const a=ang+w/2;pX.save();pX.translate(PCX+r*Math.cos(a),PCY+r*Math.sin(a));pX.rotate(a+Math.PI/2);pX.textAlign='center';pX.textBaseline='middle';pX.fillText(ch,0,0);pX.restore();ang+=w;});pX.restore();
+}
+function pLabel(text,r,midMin,ls){
+  const glbl=cfg.labelStyle||DC.labelStyle;const inh=!ls||ls.inherit!==false;
+  const curved=inh?glbl.curved:ls.curved,sz=inh?glbl.fontSize:ls.fontSize||12,col=inh?glbl.color:ls.color||'rgba(200,220,255,.75)';
+  if(curved){drawCurvedTxt(text,r,midMin,sz,col);return;}
+  const a=mTA(midMin);pX.save();pX.translate(PCX+r*Math.cos(a),PCY+r*Math.sin(a));pX.rotate(a+Math.PI/2);
+  pX.font=`bold ${sz}px ${cfg.global.fontFamily},sans-serif`;pX.fillStyle=col;pX.textAlign='center';pX.textBaseline='middle';pX.fillText(text,0,0);pX.restore();
+}
+
+function renderPreview(){
+  const now=new Date();
+  const layout=getLayout();
+  const own=layout.filter(l=>!l.shared);
+  const faceR=own.length>0?own[own.length-1].ri-4:PMR*0.55;
+  const outerR=own.length>0?own[0].ro:PMR;
+
+  pX.clearRect(0,0,pC.width,pC.height);
+  pX.fillStyle=cfg.global.bgColor;pX.fillRect(0,0,pC.width,pC.height);
+
+  // rings
+  layout.forEach(({ro,ri,ring,shared})=>{
+    if(!shared&&(ring.startMin!==0||ring.endMin!==60))pFillArc(ro,ri,0,60,'#060810');
+    pFillArc(ro,ri,ring.startMin,ring.endMin,ring.color);
+    if(ring.over60&&ring.over60.enabled){const o=ring.over60,sr=ri+(ro-ri)*(1-o.subArcThicknessRatio);pFillArc(ro,sr,o.subArcStart,o.subArcEnd,o.subArcColor);}
+  });
+
+  // carets
+  layout.forEach(({ro,ri,ring})=>{
+    if(ring.type!=='deadline'||ring.caretMin==null)return;
+    const lr=ring.caretLengthRatio!=null?ring.caretLengthRatio:1.0;
+    let cRo,cRi;
+    if(ring.radiusGroup){cRo=ro+14;cRi=ro-(ro-ri)*lr*0.4;}
+    else{const ti=layout.findIndex(l=>l.ring.id===ring.caretBridgesTo);cRo=ti>=0?layout[ti].ri+1:ro+1;cRi=cRo-(cRo-(ri-1))*lr;}
+    pTick(cRo,cRi,ring.caretMin,ring.caretColor,3);
+  });
+
+  // T0 — drawn at top of clock, no context rotation needed
+  const t0=cfg.t0Caret||{color:'#CC1111',width:8,shape:'rectangle',lengthRatio:1.0};
+  pDrawT0(outerR+2,faceR,t0.color,Math.max(2,t0.width*0.55),t0.shape||'rectangle',t0.lengthRatio||1.0);
+
+  // ring labels
+  layout.forEach(({ro,ri,ring,shared})=>{
+    if(shared)return;
+    const mid=(ro+ri)/2;const ls=ring.labelStyle||{inherit:true};
+    const glbl=cfg.labelStyle||{};const inh=ls.inherit!==false;
+    const centered=inh?(glbl.centered!==false):ls.centered!==false;
+    const midMin=centered?arcMid(ring.startMin,ring.endMin):33;
+    pLabel(ring.label,mid,midMin,ls);
+  });
+
+  // face segments
+  cfg.face.segments.forEach((seg,i)=>{
+    const a1=mTA(i*15),a2=i===3?mTA(0)+Math.PI*2:mTA((i+1)*15);
+    pX.beginPath();pX.moveTo(PCX,PCY);pX.arc(PCX,PCY,faceR,a1,a2,false);pX.closePath();pX.fillStyle=seg.darkColor;pX.fill();
+    pX.beginPath();pX.moveTo(PCX,PCY);pX.arc(PCX,PCY,faceR*0.6,a1,a2,false);pX.closePath();pX.fillStyle=seg.lightColor;pX.fill();
+    pX.save();pX.strokeStyle='#000';pX.lineWidth=1;pX.beginPath();pX.moveTo(PCX,PCY);pX.lineTo(PCX+faceR*Math.cos(a1),PCY+faceR*Math.sin(a1));pX.stroke();pX.restore();
+    if(cfg.face.showQuadrantLabels!==false){const ma=mTA(i*15+7.5),lr=faceR*0.76;pX.save();pX.translate(PCX+lr*Math.cos(ma),PCY+lr*Math.sin(ma));pX.font=`bold 12px ${cfg.global.fontFamily},sans-serif`;pX.fillStyle='rgba(255,255,255,.8)';pX.textAlign='center';pX.textBaseline='middle';pX.fillText(seg.label,0,0);pX.restore();}
+  });
+  drawTex(faceR,cfg.face.texture||'none');
+  if(cfg.face.showHourNumerals){for(let h=1;h<=12;h++){const a=mTA(h*5),nr=faceR*0.86;pX.save();pX.translate(PCX+nr*Math.cos(a),PCY+nr*Math.sin(a));pX.font=`bold 11px ${cfg.global.fontFamily},sans-serif`;pX.fillStyle='rgba(255,255,255,.6)';pX.textAlign='center';pX.textBaseline='middle';pX.fillText(h,0,0);pX.restore();}}
+  const tst=cfg.face.tickStyle||'simple';if(tst!=='none'){const tr=own.length>0?own[own.length-1].ri-2:faceR;for(let m=0;m<60;m++){const a=mTA(m),maj=m%5===0;const l2=tst==='railway'?(maj?12:m%2===0?7:4):(maj?10:5);pX.beginPath();pX.moveTo(PCX+tr*Math.cos(a),PCY+tr*Math.sin(a));pX.lineTo(PCX+(tr-l2)*Math.cos(a),PCY+(tr-l2)*Math.sin(a));pX.strokeStyle=maj?'rgba(255,255,255,.5)':'rgba(255,255,255,.18)';pX.lineWidth=maj?1.5:1;pX.stroke();}}
+  pX.beginPath();pX.arc(PCX,PCY,14,0,Math.PI*2);pX.fillStyle='#040406';pX.fill();
+
+  // hands
+  const h=now.getHours()%12,m=now.getMinutes(),s=now.getSeconds();
+  const hA=mTA(((h+m/60)/12)*60),mA=mTA(m+s/60),sA=pSecAngle(now);
+  const g=cfg.global,sh=g.handShape||'baton';
+  const mLen=g.minuteHandSnap?outerR:(g.minuteHandLength||420)*(PMR/450);
+  const hLen=faceR*0.54,lollipop=sh==='submariner'||sh==='twodoor';
+  pDrawHand(hA,hLen,g.hourHandWidth*0.65,g.hourHandColor||'#CCC',sh);
+  pDrawMin(mA,mLen,g.minuteHandWidth*0.65,g.minuteHandColor||'#E0E0E0',sh);
+  pDrawSec(sA,outerR*0.97,g.secondHandColor||'#FFB800',lollipop);
+  pX.beginPath();pX.arc(PCX,PCY,7,0,Math.PI*2);pX.fillStyle=g.secondHandColor||'#FFB800';pX.fill();
+  pX.beginPath();pX.arc(PCX,PCY,3,0,Math.PI*2);pX.fillStyle='#111';pX.fill();
+}
+
+function previewLoop(){
+  renderPreview();
+  const st=cfg.global.secondStyle||'quartz';
+  setTimeout(previewLoop,st==='springdrive'?50:st==='mechanical'?125:1000);
+}
+
+// ── Thumb drawing ──
+function drawThumb(canvas,shape,color){
+  const c=canvas.getContext('2d');c.clearRect(0,0,canvas.width,canvas.height);
+  const cx=canvas.width/2,cy=canvas.height/2+4,len=canvas.height*0.68,w=Math.max(3,canvas.width*0.22),tail=4;
+  c.save();c.translate(cx,cy);c.rotate(-Math.PI/2);
+  switch(shape){
+    case 'baton': c.beginPath();c.moveTo(-w/2,tail);c.lineTo(-w/2,-len);c.lineTo(w/2,-len);c.lineTo(w/2,tail);c.closePath();c.fillStyle=color;c.fill();break;
+    case 'triangle': c.beginPath();c.moveTo(0,-len);c.lineTo(-w/2,tail);c.lineTo(w/2,tail);c.closePath();c.fillStyle=color;c.fill();break;
+    case 'sword': c.beginPath();c.moveTo(0,-len);c.lineTo(-w/2,-len*0.3);c.lineTo(-w*0.15,tail);c.lineTo(w*0.15,tail);c.lineTo(w/2,-len*0.3);c.closePath();c.fillStyle=color;c.fill();break;
+    case 'skeleton': c.beginPath();c.moveTo(-w/2,tail);c.lineTo(-w/2,-len);c.lineTo(w/2,-len);c.lineTo(w/2,tail);c.closePath();c.strokeStyle=color;c.lineWidth=1.5;c.stroke();break;
+    case 'submariner':{const lr=w,ty=-len;c.beginPath();c.moveTo(-w*0.42,tail);c.lineTo(-w*0.42,ty+lr*1.1);c.lineTo(w*0.42,ty+lr*1.1);c.lineTo(w*0.42,tail);c.closePath();c.fillStyle=color;c.fill();[0,120,240].forEach(d=>{const r=d*Math.PI/180;c.beginPath();c.arc(Math.sin(r)*lr,ty-Math.cos(r)*lr,lr,0,Math.PI*2);c.fillStyle=color;c.fill();});c.beginPath();c.arc(0,ty,lr*0.44,0,Math.PI*2);c.fillStyle='rgba(0,0,0,.75)';c.fill();break;}
+    case 'twodoor':{const dr=w*1.4,dy2=-len+dr*0.9,sw=w*0.42;c.beginPath();c.moveTo(-sw*1.3,tail);c.lineTo(-sw,dy2);c.lineTo(sw,dy2);c.lineTo(sw*1.3,tail);c.closePath();c.fillStyle=color;c.fill();c.beginPath();c.arc(0,dy2,dr,0,Math.PI*2);c.fillStyle=color;c.fill();c.beginPath();c.arc(0,dy2,dr*0.38,0,Math.PI*2);c.fillStyle='rgba(0,0,0,.65)';c.fill();break;}
+  }
+  c.restore();
+}
+function drawT0Thumb(canvas,shape,color){
+  const c=canvas.getContext('2d');c.clearRect(0,0,canvas.width,canvas.height);
+  const cx=canvas.width/2,cy=canvas.height/2,ro=canvas.height*0.44,ri=canvas.height*0.12;
+  const len=ro-ri,midY=cy-((ro+ri)/2),hw=Math.max(3,canvas.width*0.22);
+  const outerY=cy-ro,innerY=cy-ri,midYY=(outerY+innerY)/2;
+  c.save();c.fillStyle=color;c.beginPath();
+  switch(shape){
+    case 'rectangle': c.rect(cx-hw,outerY,hw*2,len);break;
+    case 'triangle':  c.moveTo(cx,outerY);c.lineTo(cx-hw,innerY);c.lineTo(cx+hw,innerY);break;
+    case 'diamond':   c.moveTo(cx,outerY);c.lineTo(cx-hw,midYY);c.lineTo(cx,innerY);c.lineTo(cx+hw,midYY);break;
+    case 'trapezoid': c.moveTo(cx-hw,outerY);c.lineTo(cx+hw,outerY);c.lineTo(cx+hw*0.5,innerY);c.lineTo(cx-hw*0.5,innerY);break;
+    case 'keystone':  c.moveTo(cx-hw*0.5,outerY);c.lineTo(cx+hw*0.5,outerY);c.lineTo(cx+hw,innerY);c.lineTo(cx-hw,innerY);break;
+  }
+  c.closePath();c.fill();c.restore();
+}
+function drawFaceThumb(canvas,texId){
+  const c=canvas.getContext('2d'),cx=canvas.width/2,cy=canvas.height/2,r=canvas.width*0.46;
+  c.clearRect(0,0,canvas.width,canvas.height);
+  c.beginPath();c.arc(cx,cy,r,0,Math.PI*2);c.fillStyle='#1a2030';c.fill();
+  c.save();
+  switch(texId){
+    case 'guilloché': c.globalAlpha=0.09;for(let i=0;i<18;i++){const a=i*Math.PI/9;c.beginPath();c.moveTo(cx,cy);c.arc(cx,cy,r,a,a+Math.PI/9);c.closePath();c.fillStyle=i%2?'#000':'#fff';c.fill();}break;
+    case 'sunburst':  c.globalAlpha=0.15;for(let i=0;i<60;i++){const a=(i/60)*Math.PI*2;c.beginPath();c.moveTo(cx,cy);c.lineTo(cx+r*Math.cos(a),cy+r*Math.sin(a));c.strokeStyle='rgba(255,255,255,.6)';c.lineWidth=0.6;c.stroke();}break;
+    case 'fumé':      {const g=c.createRadialGradient(cx,cy,r*0.1,cx,cy,r);g.addColorStop(0,'rgba(180,200,255,.4)');g.addColorStop(1,'rgba(0,0,0,.7)');c.fillStyle=g;c.beginPath();c.arc(cx,cy,r,0,Math.PI*2);c.fill();}break;
+    case 'sector':    c.globalAlpha=0.12;for(let i=0;i<8;i++){const a1=(i/8)*Math.PI*2,a2=((i+1)/8)*Math.PI*2;c.beginPath();c.moveTo(cx,cy);c.arc(cx,cy,r,a1,a2);c.closePath();c.fillStyle=i%2?'rgba(0,0,0,.15)':'rgba(255,255,255,.1)';c.fill();}break;
+    case 'grand-seiko': c.globalAlpha=0.14;for(let x=cx-r;x<cx+r;x+=r*0.07){const dy=Math.sqrt(Math.max(0,r*r-(x-cx)**2));c.beginPath();c.moveTo(x,cy-dy);c.lineTo(x,cy+dy);c.strokeStyle='rgba(255,255,255,1)';c.lineWidth=0.5;c.stroke();}break;
+    case 'regal-oak': {const sq=r*0.12;c.globalAlpha=0.11;for(let y=cy-r;y<cy+r;y+=sq)for(let x=cx-r;x<cx+r;x+=sq){if((x-cx)**2+(y-cy)**2>r*r)continue;c.fillStyle=(Math.round((x-cx)/sq)+Math.round((y-cy)/sq))%2===0?'rgba(255,255,255,.3)':'rgba(0,0,0,.2)';c.fillRect(x,y,sq,sq);}break;}
+    case 'nemo':      {const sh=r*0.13;c.globalAlpha=0.15;for(let y=cy-r;y<cy+r;y+=sh){const dx=Math.sqrt(Math.max(0,r*r-(y-cy)**2));c.fillStyle=Math.round((y-(cy-r))/sh)%2===0?'rgba(255,255,255,.1)':'rgba(0,0,0,.1)';c.fillRect(cx-dx,y,dx*2,sh);}break;}
+    case 'goldeneye': {c.globalAlpha=0.18;const wa=r*0.06,wl=r*0.28;for(let band=0;band<r*2/(r*0.1)+2;band++){const bY=cy-r+band*r*0.1;c.beginPath();let fi=true;for(let x=cx-r;x<=cx+r;x+=3){const y=bY+Math.sin((x/wl)*Math.PI*2)*wa;if(fi){c.moveTo(x,y);fi=false;}else c.lineTo(x,y);}c.strokeStyle=band%2===0?'rgba(100,160,255,.9)':'rgba(200,230,255,.6)';c.lineWidth=band%2===0?1:0.5;c.stroke();}break;}
+  }
+  c.restore();
+}
+
+// ═══════════════════════════════════════════════════════
+//  BUILD FORMS
+// ═══════════════════════════════════════════════════════
+function buildAll(){buildGlobal();buildFace();buildRingList();buildAlarmList();buildT0();buildLS();}
+
+function buildGlobal(){
+  const g=cfg.global;
+  const fg=document.getElementById('fontGrid');fg.innerHTML='';
+  FONTS.forEach(f=>{const d=document.createElement('div');d.className='fopt'+(g.fontFamily===f.n?' sel':'');d.style.fontFamily=f.n;d.textContent=f.s;d.onclick=()=>{cfg.global.fontFamily=f.n;fg.querySelectorAll('.fopt').forEach(e=>e.classList.remove('sel'));d.classList.add('sel');mu();rp();};fg.appendChild(d);});
+  const sg=document.getElementById('shapeGrid');sg.innerHTML='';
+  SHAPES.forEach(sh=>{const d=document.createElement('div');d.className='sopt'+(g.handShape===sh.id?' sel':'');const cv=document.createElement('canvas');cv.width=36;cv.height=40;drawThumb(cv,sh.id,'#E0E0E0');d.appendChild(cv);const lbl=document.createElement('div');lbl.className='sol';lbl.textContent=sh.l;d.appendChild(lbl);d.onclick=()=>{cfg.global.handShape=sh.id;sg.querySelectorAll('.sopt').forEach(e=>e.classList.remove('sel'));d.classList.add('sel');mu();rp();};sg.appendChild(d);});
+  const stg=document.getElementById('secGrid');stg.innerHTML='';
+  SEC_STYLES.forEach(ss=>{const d=document.createElement('div');d.className='seopt'+(g.secondStyle===ss.id?' sel':'');d.innerHTML=`<div class="son">${ss.n}</div><div class="sod">${ss.d}</div>`;d.onclick=()=>{cfg.global.secondStyle=ss.id;stg.querySelectorAll('.seopt').forEach(e=>e.classList.remove('sel'));d.classList.add('sel');mu();};stg.appendChild(d);});
+  sCP('g_bg','g_bgT',g.bgColor);sCP('g_dig','g_digT',g.digitalColor);sCP('g_hC','g_hCT',g.hourHandColor||'#CCCCCC');sCP('g_mC','g_mCT',g.minuteHandColor||'#E0E0E0');sCP('g_sC','g_sCT',g.secondHandColor||'#FFB800');
+  document.getElementById('g_snap').checked=g.minuteHandSnap;document.getElementById('manRow').style.display=g.minuteHandSnap?'none':'block';
+  document.getElementById('snapLbl').textContent=g.minuteHandSnap?'Snap to outermost ring':'Manual length';
+  sRR('g_mLen','g_mLenV',g.minuteHandLength||420);sRR('g_hW','g_hWV',g.hourHandWidth||10);sRR('g_mW','g_mWV',g.minuteHandWidth||6);
+}
+
+function buildFace(){
+  const f=cfg.face;
+  const ftg=document.getElementById('faceTexGrid');ftg.innerHTML='';
+  TEXTURES.forEach(ft=>{const d=document.createElement('div');d.className='fto'+(f.texture===ft.id?' sel':'');const cv=document.createElement('canvas');cv.width=52;cv.height=40;drawFaceThumb(cv,ft.id);d.appendChild(cv);const lbl=document.createElement('span');lbl.className='ftol';lbl.textContent=ft.l;d.appendChild(lbl);d.onclick=()=>{cfg.face.texture=ft.id;ftg.querySelectorAll('.fto').forEach(e=>e.classList.remove('sel'));d.classList.add('sel');mu();rp();};ftg.appendChild(d);});
+  const sg=document.getElementById('segGrid');sg.innerHTML='';
+  const names=['00–15','15–30','30–45','45–00'];
+  (f.segments||DC.face.segments).forEach((seg,i)=>{
+    const d=document.createElement('div');d.className='seg-card';
+    d.innerHTML=`<div class="seg-t">${names[i]}</div>
+    <div><label class="fl">Dark</label><div class="cr" style="margin-top:3px"><input type="color" value="${seg.darkColor}" onchange="cfg.face.segments[${i}].darkColor=this.value;mu();rp()"><input type="text" value="${seg.darkColor}" style="width:68px;font-family:var(--mono);font-size:.72rem" onchange="cfg.face.segments[${i}].darkColor=this.value;mu();rp()"></div></div>
+    <div><label class="fl">Light</label><div class="cr" style="margin-top:3px"><input type="color" value="${seg.lightColor}" onchange="cfg.face.segments[${i}].lightColor=this.value;mu();rp()"><input type="text" value="${seg.lightColor}" style="width:68px;font-family:var(--mono);font-size:.72rem" onchange="cfg.face.segments[${i}].lightColor=this.value;mu();rp()"></div></div>
+    <div><label class="fl">Label</label><input type="text" value="${seg.label}" style="margin-top:3px" onchange="cfg.face.segments[${i}].label=this.value;mu();rp()"></div>`;
+    sg.appendChild(d);
+  });
+  document.getElementById('f_tick').value=f.tickStyle||'simple';
+  document.getElementById('f_nums').checked=!!f.showHourNumerals;
+  document.getElementById('f_lbls').checked=f.showQuadrantLabels!==false;
+}
+
+function buildT0(){
+  const t=cfg.t0Caret||{color:'#CC1111',width:8,shape:'rectangle',lengthRatio:1.0};
+  const sg=document.getElementById('t0ShapeGrid');sg.innerHTML='';
+  T0_SHAPES.forEach(s=>{const d=document.createElement('div');d.className='t0so'+(t.shape===s.id?' sel':'');const cv=document.createElement('canvas');cv.width=42;cv.height=40;drawT0Thumb(cv,s.id,t.color);d.appendChild(cv);const lbl=document.createElement('div');lbl.className='t0sol';lbl.textContent=s.l;d.appendChild(lbl);d.onclick=()=>{cfg.t0Caret.shape=s.id;sg.querySelectorAll('.t0so').forEach(e=>e.classList.remove('sel'));d.classList.add('sel');mu();rp();};sg.appendChild(d);});
+  sCP('t0C','t0CT',t.color);sRR('t0W','t0WV',t.width||8);sRR('t0L','t0LV',t.lengthRatio!=null?t.lengthRatio:1.0);
+}
+
+function buildLS(){
+  const ls=cfg.labelStyle||DC.labelStyle;
+  sRR('ls_sz','ls_szV',ls.fontSize||12);sCP('ls_col','ls_colT',ls.color||'rgba(200,220,255,0.75)');
+  document.getElementById('ls_curve').checked=!!ls.curved;
+  document.getElementById('ls_center').checked=ls.centered!==false;
+}
+
+function buildRingList(){
+  const list=document.getElementById('ringList');list.innerHTML='';
+  cfg.rings.forEach((_,i)=>list.appendChild(makeRingCard(i)));
+}
+function makeRingCard(idx){
+  const ring=cfg.rings[idx];
+  const iF=idx===0,iL=idx===cfg.rings.length-1;
+  const card=document.createElement('div');card.className='card';card.id='rc-'+idx;
+  const rgOpts=cfg.rings.filter((_,i)=>i!==idx).map(r=>`<option value="${r.id}" ${ring.radiusGroup===r.id?'selected':''}>${r.label}</option>`).join('');
+  const ls=ring.labelStyle||{inherit:true};
+  const lr=ring.caretLengthRatio!=null?ring.caretLengthRatio:1.0;
+  card.innerHTML=`
+  <div class="chdr" onclick="toggleCard('rb-${idx}','rch-${idx}')">
+    <div class="csw" id="rsw-${idx}" style="background:${ring.color}"></div>
+    <span class="ct">${ring.label}</span>
+    <span class="badge ${ring.type==='interval'?'bi':'bd'}">${ring.type}</span>
+    <span class="cst" id="rsub-${idx}">${fmtW(ring.startMin,ring.endMin)}</span>
+    <div style="display:flex;gap:3px;margin-left:auto" onclick="event.stopPropagation()">
+      <button class="btn btn-g btn-sm" ${iF?'disabled':''} onclick="mvRing(${idx},-1)">▲</button>
+      <button class="btn btn-g btn-sm" ${iL?'disabled':''} onclick="mvRing(${idx},1)">▼</button>
+    </div>
+    <span class="cchev op" id="rch-${idx}">▼</span>
+  </div>
+  <div class="cbdy col" id="rb-${idx}">
+    <div class="two">
+      <div><label class="fl">Label</label><input type="text" value="${ring.label}" style="margin-top:4px" onchange="cfg.rings[${idx}].label=this.value;document.querySelector('#rc-${idx} .ct').textContent=this.value;mu()"></div>
+      <div><label class="fl">Type</label><select style="margin-top:4px" onchange="cfg.rings[${idx}].type=this.value;buildRingList();mu();rp()"><option value="interval" ${ring.type==='interval'?'selected':''}>Interval</option><option value="deadline" ${ring.type==='deadline'?'selected':''}>Deadline</option></select></div>
+    </div>
+    <div class="two">
+      <div><label class="fl">Fill Color</label><div class="cr" style="margin-top:4px"><input type="color" id="rc2-${idx}" value="${ring.color}" oninput="sT('rc2-${idx}','rct-${idx}')" onchange="cfg.rings[${idx}].color=this.value;document.getElementById('rsw-${idx}').style.background=this.value;mu();rp()"><input type="text" id="rct-${idx}" value="${ring.color}" style="width:72px;font-family:var(--mono);font-size:.74rem" oninput="cpS('rct-${idx}','rc2-${idx}')" onchange="cfg.rings[${idx}].color=this.value;document.getElementById('rsw-${idx}').style.background=this.value;mu();rp()"></div></div>
+      <div><label class="fl">Thickness</label><div class="rr" style="margin-top:4px"><input type="range" min="8" max="80" value="${ring.thickness}" oninput="cfg.rings[${idx}].thickness=+this.value;document.getElementById('rt-${idx}').textContent=this.value;mu();rp()"><span class="rv" id="rt-${idx}">${ring.thickness}</span></div></div>
+    </div>
+    <div><label class="fl">Time Window (minutes)</label>
+      <div class="mp" style="margin-top:4px"><input type="number" min="0" max="59" value="${ring.startMin}" onchange="cfg.rings[${idx}].startMin=+this.value;document.getElementById('rsub-${idx}').textContent=fmtW(cfg.rings[${idx}].startMin,cfg.rings[${idx}].endMin);mu();rp()"><span class="ms">to</span><input type="number" min="0" max="60" value="${ring.endMin}" onchange="cfg.rings[${idx}].endMin=+this.value;document.getElementById('rsub-${idx}').textContent=fmtW(cfg.rings[${idx}].startMin,cfg.rings[${idx}].endMin);mu();rp()"></div>
+      <div class="fh">60 = full ring. Wrap-around works (e.g. 58→3).</div>
+    </div>
+    <div><label class="fl">Share Radius With</label>
+      <select style="margin-top:4px" onchange="cfg.rings[${idx}].radiusGroup=this.value;mu();rp()"><option value="">— Own radius —</option>${rgOpts}</select>
+      <div class="fh">Lower items in the list paint on top when radii are shared.</div>
+    </div>
+    ${ring.type==='deadline'?`
+    <div class="sub"><div class="sub-t">Caret</div>
+      <div class="two">
+        <div><label class="fl">Position (min)</label><input type="number" min="0" max="59" value="${ring.caretMin||0}" style="margin-top:3px" onchange="cfg.rings[${idx}].caretMin=+this.value;mu();rp()"></div>
+        <div><label class="fl">Color</label><div class="cr" style="margin-top:3px"><input type="color" value="${ring.caretColor||'#fff'}" onchange="cfg.rings[${idx}].caretColor=this.value;mu();rp()"><input type="text" value="${ring.caretColor||'#fff'}" style="width:68px;font-family:var(--mono);font-size:.72rem" onchange="cfg.rings[${idx}].caretColor=this.value;mu();rp()"></div></div>
+      </div>
+      <div><label class="fl">Length Ratio</label>
+        <div class="fh">1.0 = full span · 0.5 = half inward from outer edge</div>
+        <div class="rr" style="margin-top:3px"><input type="range" min="0.1" max="1.0" step="0.05" value="${lr}" oninput="cfg.rings[${idx}].caretLengthRatio=+this.value;document.getElementById('clr-${idx}').textContent=this.value;mu();rp()"><span class="rv" id="clr-${idx}">${lr}</span></div>
+      </div>
+      <div><label class="fl">Bridges to Ring</label>
+        <select style="margin-top:3px" onchange="cfg.rings[${idx}].caretBridgesTo=this.value;mu();rp()">
+          <option value="">— None —</option>${cfg.rings.filter((_,i)=>i!==idx).map(r=>`<option value="${r.id}" ${ring.caretBridgesTo===r.id?'selected':''}>${r.label}</option>`).join('')}
+        </select>
+      </div>
+    </div>`:``}
+    <div class="sub"><div class="tw"><label class="tog"><input type="checkbox" ${ring.over60&&ring.over60.enabled?'checked':''} onchange="if(!cfg.rings[${idx}].over60)cfg.rings[${idx}].over60={enabled:false,subArcStart:45,subArcEnd:60,subArcColor:'#0C1830',subArcThicknessRatio:0.45};cfg.rings[${idx}].over60.enabled=this.checked;document.getElementById('o60-${idx}').style.display=this.checked?'flex':'none';mu();rp()"><div class="tog-t"></div><div class="tog-k"></div></label><span class="tl">Interval exceeds 60 minutes</span></div>
+      <div id="o60-${idx}" style="display:${ring.over60&&ring.over60.enabled?'flex':'none'};flex-direction:column;gap:7px;margin-top:6px">
+        <div class="two"><div><label class="fl">Sub-arc Range</label><div class="mp" style="margin-top:3px"><input type="number" min="0" max="59" value="${ring.over60?ring.over60.subArcStart:45}" onchange="cfg.rings[${idx}].over60.subArcStart=+this.value;mu();rp()"><span class="ms">→</span><input type="number" min="0" max="60" value="${ring.over60?ring.over60.subArcEnd:60}" onchange="cfg.rings[${idx}].over60.subArcEnd=+this.value;mu();rp()"></div></div>
+        <div><label class="fl">Sub-arc Color</label><div class="cr" style="margin-top:3px"><input type="color" value="${ring.over60?ring.over60.subArcColor:'#0C1830'}" onchange="cfg.rings[${idx}].over60.subArcColor=this.value;mu();rp()"><input type="text" value="${ring.over60?ring.over60.subArcColor:'#0C1830'}" style="width:68px;font-family:var(--mono);font-size:.72rem" onchange="cfg.rings[${idx}].over60.subArcColor=this.value;mu();rp()"></div></div></div>
+        <div><label class="fl">Thickness Ratio</label><div class="fh">1.0 = same as ring · 0.45 = thin inner band</div><div class="rr" style="margin-top:3px"><input type="range" min="0.1" max="1.0" step="0.05" value="${ring.over60?ring.over60.subArcThicknessRatio:0.45}" oninput="cfg.rings[${idx}].over60.subArcThicknessRatio=+this.value;document.getElementById('o60t-${idx}').textContent=this.value;mu();rp()"><span class="rv" id="o60t-${idx}">${ring.over60?ring.over60.subArcThicknessRatio:0.45}</span></div></div>
+      </div>
+    </div>
+    <div class="sub"><div class="sub-t">Label Style (per-ring override)</div>
+      <div class="tw"><label class="tog"><input type="checkbox" ${ls.inherit!==false?'checked':''} onchange="cfg.rings[${idx}].labelStyle.inherit=this.checked;document.getElementById('lso-${idx}').style.display=this.checked?'none':'flex';mu();rp()"><div class="tog-t"></div><div class="tog-k"></div></label><span class="tl">Inherit global label style</span></div>
+      <div id="lso-${idx}" style="display:${ls.inherit!==false?'none':'flex'};flex-direction:column;gap:7px">
+        <div class="two">
+          <div><label class="fl">Font Size</label><div class="rr" style="margin-top:3px"><input type="range" min="8" max="22" value="${ls.fontSize||12}" oninput="cfg.rings[${idx}].labelStyle.fontSize=+this.value;document.getElementById('lsz-${idx}').textContent=this.value;mu();rp()"><span class="rv" id="lsz-${idx}">${ls.fontSize||12}</span></div></div>
+          <div><label class="fl">Color</label><div class="cr" style="margin-top:3px"><input type="color" value="${ls.color||'rgba(200,220,255,0.75)'}" onchange="cfg.rings[${idx}].labelStyle.color=this.value;mu();rp()"></div></div>
+        </div>
+        <div class="tw"><label class="tog"><input type="checkbox" ${ls.curved?'checked':''} onchange="cfg.rings[${idx}].labelStyle.curved=this.checked;mu();rp()"><div class="tog-t"></div><div class="tog-k"></div></label><span class="tl">Curved text</span></div>
+        <div class="tw"><label class="tog"><input type="checkbox" ${ls.centered!==false?'checked':''} onchange="cfg.rings[${idx}].labelStyle.centered=this.checked;mu();rp()"><div class="tog-t"></div><div class="tog-k"></div></label><span class="tl">Centre within shape</span></div>
+      </div>
+    </div>
+    <button class="btn-del" onclick="delRing(${idx})">Delete This Ring</button>
+  </div>`;
+  return card;
+}
+
+function buildAlarmList(){
+  const list=document.getElementById('alarmList');list.innerHTML='';
+  cfg.alarms.forEach((_,i)=>list.appendChild(makeAlarmCard(i)));
+}
+function makeAlarmCard(idx){
+  const a=cfg.alarms[idx];const card=document.createElement('div');card.className='card';
+  card.innerHTML=`
+  <div class="chdr" onclick="toggleCard('ab-${idx}','ach-${idx}')">
+    <div style="width:8px;height:8px;border-radius:50%;background:${a.enabled?'#44BB66':'#333'};flex-shrink:0" id="adot-${idx}"></div>
+    <span class="ct">${a.label}</span><span class="cst">xx:${pad(a.startMin%60)} – xx:${pad(a.endMin%60)}</span>
+    <span class="cchev op" id="ach-${idx}">▼</span>
+  </div>
+  <div class="cbdy col" id="ab-${idx}">
+    <div class="tw"><label class="tog"><input type="checkbox" ${a.enabled?'checked':''} onchange="cfg.alarms[${idx}].enabled=this.checked;document.getElementById('adot-${idx}').style.background=this.checked?'#44BB66':'#333';mu()"><div class="tog-t"></div><div class="tog-k"></div></label><span class="tl">Alarm Enabled</span></div>
+    <div class="fr"><label class="fl">Label</label><input type="text" value="${a.label}" onchange="cfg.alarms[${idx}].label=this.value;document.querySelector('#ab-${idx}').closest('.card').querySelector('.ct').textContent=this.value;mu()"></div>
+    <div><label class="fl">Time Window</label><div class="mp" style="margin-top:4px"><input type="number" min="0" max="59" value="${a.startMin}" onchange="cfg.alarms[${idx}].startMin=+this.value;mu()"><span class="ms">to</span><input type="number" min="0" max="63" value="${a.endMin}" onchange="cfg.alarms[${idx}].endMin=+this.value;mu()"></div><div class="fh">Values &gt;60 wrap to next hour.</div></div>
+    <div class="fr"><label class="fl">Indicator Text</label><input type="text" value="${a.indicatorText}" onchange="cfg.alarms[${idx}].indicatorText=this.value;mu()"></div>
+    <div class="fh" style="margin-top:-6px">Tokens: {eimBal} = MW value &nbsp;|&nbsp; {nextHour} = next hour</div>
+    <div class="two">
+      <div><label class="fl">Color</label><select style="margin-top:4px" onchange="cfg.alarms[${idx}].indicatorColor=this.value;mu()"><option value="gold" ${a.indicatorColor==='gold'?'selected':''}>Gold</option><option value="magenta" ${a.indicatorColor==='magenta'?'selected':''}>Magenta</option></select></div>
+      <div><label class="fl">PI Flag</label><input type="text" value="${a.piFlag||''}" placeholder="e.g. bpSent" style="margin-top:4px" onchange="cfg.alarms[${idx}].piFlag=this.value||null;mu()"></div>
+    </div>
+    <div class="tw"><label class="tog"><input type="checkbox" ${a.escalating?'checked':''} onchange="cfg.alarms[${idx}].escalating=this.checked;mu()"><div class="tog-t"></div><div class="tog-k"></div></label><span class="tl">Escalating frequency</span></div>
+    <button class="btn-del" onclick="delAlarm(${idx})">Delete This Alarm</button>
+  </div>`;
+  return card;
+}
+
+// CRUD
+function addRing(){cfg.rings.push({id:nid(),label:'New Ring',type:'interval',color:'#334455',thickness:30,startMin:0,endMin:60,radiusGroup:'',labelStyle:{inherit:true}});buildRingList();mu();rp();}
+function delRing(i){if(cfg.rings.length<=1){alert('At least one ring is required.');return;}cfg.rings.splice(i,1);buildRingList();mu();rp();}
+function mvRing(i,d){const n=i+d;if(n<0||n>=cfg.rings.length)return;[cfg.rings[i],cfg.rings[n]]=[cfg.rings[n],cfg.rings[i]];buildRingList();mu();rp();}
+function addAlarm(){cfg.alarms.push({id:nid(),label:'New Alarm',startMin:0,endMin:5,enabled:true,escalating:false,piFlag:null,indicatorText:'NEW ALARM',indicatorColor:'gold'});buildAlarmList();mu();}
+function delAlarm(i){cfg.alarms.splice(i,1);buildAlarmList();mu();}
+
+// APPLY
+function applyG(){
+  const g=cfg.global;
+  g.bgColor=document.getElementById('g_bg').value;g.digitalColor=document.getElementById('g_dig').value;
+  g.hourHandColor=document.getElementById('g_hC').value;g.minuteHandColor=document.getElementById('g_mC').value;g.secondHandColor=document.getElementById('g_sC').value;
+  g.minuteHandSnap=document.getElementById('g_snap').checked;g.minuteHandLength=+document.getElementById('g_mLen').value;
+  g.hourHandWidth=+document.getElementById('g_hW').value;g.minuteHandWidth=+document.getElementById('g_mW').value;
+  document.getElementById('manRow').style.display=g.minuteHandSnap?'none':'block';
+  document.getElementById('snapLbl').textContent=g.minuteHandSnap?'Snap to outermost ring':'Manual length';
+  mu();rp();
+}
+function applyT0(){
+  if(!cfg.t0Caret)cfg.t0Caret={};
+  cfg.t0Caret.color=document.getElementById('t0C').value;
+  cfg.t0Caret.width=+document.getElementById('t0W').value;
+  cfg.t0Caret.lengthRatio=+document.getElementById('t0L').value;
+  buildT0();mu();rp();
+}
+function applyLS(){
+  cfg.labelStyle=cfg.labelStyle||{};
+  cfg.labelStyle.fontSize=+document.getElementById('ls_sz').value;
+  cfg.labelStyle.color=document.getElementById('ls_col').value;
+  cfg.labelStyle.curved=document.getElementById('ls_curve').checked;
+  cfg.labelStyle.centered=document.getElementById('ls_center').checked;
+  mu();rp();
+}
+
+// UI HELPERS
+function ts(id){const b=document.getElementById('body-'+id),c=document.getElementById('chev-'+id);b.classList.toggle('col');c.classList.toggle('op',!b.classList.contains('col'));}
+function toggleCard(bid,cid){const b=document.getElementById(bid),c=document.getElementById(cid);if(b&&c){b.classList.toggle('col');c.classList.toggle('op',!b.classList.contains('col'));}}
+function sCP(pid,tid,v){const p=document.getElementById(pid),t=document.getElementById(tid);if(p)p.value=v;if(t)t.value=v;}
+function cpS(tid,pid){const v=document.getElementById(tid).value;if(/^#[0-9a-fA-F]{6}$/.test(v))document.getElementById(pid).value=v;mu();rp();}
+function sT(pid,tid){const v=document.getElementById(pid).value;const t=document.getElementById(tid);if(t)t.value=v;}
+function sRR(rid,vid,v){const r=document.getElementById(rid),e=document.getElementById(vid);if(r)r.value=v;if(e)e.textContent=v;}
+function rrS(rid,vid){const v=document.getElementById(rid).value;const e=document.getElementById(vid);if(e)e.textContent=v;}
+function fmtW(s,e){if(s===0&&e===60)return 'full ring';return`xx:${pad(s%60)} – xx:${pad(e%60)}`;}
+function mu(){const e=document.getElementById('saveStatus');e.textContent='Unsaved changes';e.className='ss unsaved';}
+function rp(){renderPreview();}
+function saveCfg(){localStorage.setItem('rtClockConfig',JSON.stringify(cfg));const e=document.getElementById('saveStatus');e.textContent='Saved ✓';e.className='ss saved';}
+function saveAndLaunch(){saveCfg();window.open('rt-clock.html','_blank');}
+function exportCfg(){const b=new Blob([JSON.stringify(cfg,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='rt-clock-config.json';a.click();}
+function resetToDefaults(){if(!confirm('Reset all settings to defaults?'))return;cfg=dc();buildAll();mu();rp();}
+
+buildAll();
+previewLoop();
+</script>
+</body>
+</html>

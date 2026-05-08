@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RT Clock</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=Orbitron:wght@500;700&display=swap" rel="stylesheet">
+
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden;background:#000;display:flex;align-items:center;justify-content:center}
+.app{display:flex;flex-direction:row;align-items:center;width:100%;height:100%}
+.clock-col{flex-shrink:0;display:flex;align-items:center;justify-content:center;padding:8px}
+.clock-wrap{position:relative;flex-shrink:0}
+.clock-wrap canvas{position:absolute;top:0;left:0;width:100%;height:100%;display:block}
+.panel{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:10px;padding:0 20px 0 12px;overflow:hidden}
+#dateEl{font-family:'Kalinga','Georgia',serif;font-weight:400;color:#FFB800;text-transform:uppercase;letter-spacing:.07em;white-space:nowrap;line-height:1.1}
+#timeEl{font-family:'Kalinga','Georgia',serif;font-weight:400;color:#FFB800;letter-spacing:.01em;line-height:.95;white-space:nowrap}
+.colon{animation:blink 1s step-start infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+.indicator-banner{font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:6px 12px;border:2px solid transparent;border-radius:2px;min-height:34px;display:flex;align-items:center;color:transparent}
+.indicator-banner.gold{color:#F4BA0C;border-color:#F4BA0C;background:rgba(244,186,12,.08)}
+.indicator-banner.magenta{color:#FF00FF;border-color:#FF00FF;background:rgba(255,0,255,.08)}
+.indicator-banner.flash{animation:flashB .5s step-start infinite}
+@keyframes flashB{0%,100%{opacity:1}50%{opacity:0}}
+.controls{display:flex;flex-direction:row;flex-wrap:wrap;gap:6px 18px}
+.cb-label{display:flex;align-items:center;gap:6px;font-family:'Rajdhani',sans-serif;font-size:.8rem;font-weight:600;letter-spacing:.05em;cursor:pointer;color:#aaa;user-select:none}
+.cb-label input[type=checkbox]{appearance:none;width:13px;height:13px;border:2px solid #555;background:#111;cursor:pointer;position:relative;flex-shrink:0}
+.cb-label input[type=checkbox]:checked{border-color:#FFB800}
+.cb-label input[type=checkbox]:checked::after{content:'';position:absolute;top:1px;left:3px;width:4px;height:7px;border:2px solid #FFB800;border-top:none;border-left:none;transform:rotate(45deg)}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap}
+.btn{font-family:'Rajdhani',sans-serif;font-size:.8rem;font-weight:700;letter-spacing:.08em;padding:5px 12px;background:#0A0A0A;color:#bbb;border:2px solid #444;cursor:pointer;text-transform:uppercase;transition:border-color .2s,color .2s}
+.btn:hover{border-color:#FFB800;color:#FFB800}
+.btn.snooze{display:none;border-color:#F4BA0C;color:#F4BA0C}
+.btn.snooze.visible{display:block}
+.btn.cfg{border-color:#4488DD;color:#4488DD}
+.btn.cfg:hover{border-color:#66AAFF;color:#66AAFF}
+.pi-row{font-size:.65rem;letter-spacing:.06em;color:#252525;display:flex;align-items:center;gap:5px}
+.pi-dot{width:5px;height:5px;border-radius:50%;background:#252525}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="clock-col" id="clockCol">
+    <div class="clock-wrap" id="clockWrap">
+      <canvas id="c"></canvas>
+    </div>
+  </div>
+  <div class="panel" id="panel">
+    <div id="dateEl">---</div>
+    <div id="timeEl"><span id="hh">--</span><span class="colon">:</span><span id="mm">--</span><span class="colon">:</span><span id="ss">--</span></div>
+    <div class="indicator-banner" id="banner"></div>
+    <div class="controls">
+      <label class="cb-label"><input type="checkbox" id="cbSpeech"> Enable Speech</label>
+      <label class="cb-label"><input type="checkbox" id="cbPause"> Pause</label>
+    </div>
+    <div class="btn-row">
+      <button class="btn snooze" id="btnSnooze" onclick="snoozeAlarm()">Snooze Alarm</button>
+      <button class="btn cfg" onclick="window.open('rt-clock-config.html','_blank')">&#9881; Config</button>
+    </div>
+    <div class="pi-row"><div class="pi-dot"></div><span>PI Web API: Mock Mode</span></div>
+  </div>
+</div>
+<script>
+// ═══════════════════════════════════════════════
+//  DEFAULT CONFIG
+// ═══════════════════════════════════════════════
+const DC = {
+  global:{
+    fontFamily:'Kalinga', bgColor:'#000000', digitalColor:'#FFB800',
+    minuteHandSnap:true, minuteHandLength:420,
+    minuteHandWidth:6, minuteHandColor:'#E0E0E0',
+    hourHandWidth:10,  hourHandColor:'#CCCCCC',
+    secondHandColor:'#FFB800', handShape:'baton', secondStyle:'quartz',
+  },
+  face:{
+    texture:'none',
+    segments:[
+      {label:'00', darkColor:'#1E3A18', lightColor:'#2E5424'},
+      {label:'15', darkColor:'#28164A', lightColor:'#3E246C'},
+      {label:'30', darkColor:'#421212', lightColor:'#621A1A'},
+      {label:'45', darkColor:'#101A2C', lightColor:'#182844'},
+    ],
+    tickStyle:'simple', showHourNumerals:false, showQuadrantLabels:false,
+  },
+  t0Caret:{ color:'#CC1111', width:8, shape:'rectangle', lengthRatio:1.0 },
+  rings:[
+    {id:'r1',label:'T-75',type:'interval',color:'#1A3A6A',thickness:44,startMin:0,endMin:60,radiusGroup:'',
+     over60:{enabled:true,subArcStart:45,subArcEnd:60,subArcColor:'#0C1830',subArcThicknessRatio:0.45},
+     labelStyle:{inherit:true}},
+    {id:'r2',label:'T-77',type:'deadline',color:'#1E50A8',thickness:33,startMin:38,endMin:43,radiusGroup:'r1',
+     caretMin:43,caretColor:'#5599EE',caretLengthPx:56,caretSnapTo:'',labelStyle:{inherit:true}},
+    {id:'r3',label:'T-55',type:'interval',color:'#245020',thickness:41,startMin:5,endMin:60,radiusGroup:'',
+     labelStyle:{inherit:true}},
+    {id:'r4',label:'T-57',type:'deadline',color:'#367A28',thickness:31,startMin:58,endMin:3,radiusGroup:'r3',
+     caretMin:3,caretColor:'#55CC44',caretLengthPx:56,caretSnapTo:'',labelStyle:{inherit:true}},
+    {id:'r5',label:'T-40',type:'interval',color:'#3A1E5C',thickness:38,startMin:20,endMin:60,radiusGroup:'',
+     labelStyle:{inherit:true}},
+    {id:'r6',label:'T-42',type:'deadline',color:'#58309A',thickness:31,startMin:13,endMin:18,radiusGroup:'r5',
+     caretMin:18,caretColor:'#AA77EE',caretLengthPx:56,caretSnapTo:'',labelStyle:{inherit:true}},
+  ],
+  labelStyle:{ fontSize:13, color:'rgba(220,235,255,0.88)', curved:true, centered:true },
+  alarms:[
+    {id:'a1',label:'Basepoint Submission',startMin:41,endMin:45,enabled:true,escalating:true,piFlag:'bpSent',indicatorText:'SUBMIT BASEPOINTS',indicatorColor:'gold'},
+    {id:'a2',label:'T-55 Imbalance',startMin:1,endMin:5,enabled:true,escalating:false,piFlag:'t55Flag',indicatorText:'T-55: {eimBal} MW IMBALANCE',indicatorColor:'magenta'},
+    {id:'a3',label:'T-40 Imbalance',startMin:13,endMin:18,enabled:true,escalating:false,piFlag:'t40Flag',indicatorText:'T-40: {eimBal} MW IMBALANCE',indicatorColor:'magenta'},
+    {id:'a4',label:'T-77 Warning',startMin:38,endMin:43,enabled:true,escalating:false,piFlag:null,indicatorText:'T-77 DEADLINE IN 5 MINUTES',indicatorColor:'gold'},
+    {id:'a5',label:'T-57 Deadline',startMin:58,endMin:63,enabled:true,escalating:false,piFlag:null,indicatorText:'T-57 DEADLINE',indicatorColor:'gold'},
+  ],
+};
+
+let cfg = JSON.parse(JSON.stringify(DC));
+try{ const r=localStorage.getItem('rtClockConfig'); if(r) cfg=JSON.parse(r); }catch(e){}
+
+// ═══════════════════════════════════════════════
+//  DPR-AWARE CANVAS
+//  All drawing code uses NATIVE (920×920) coords.
+//  Canvas backing store = CSS pixels × devicePixelRatio.
+//  Text is always crisp — no raster scaling blur.
+// ═══════════════════════════════════════════════
+const NATIVE=920, CX=460, CY=460;
+const canvas=document.getElementById('c');
+const ctx=canvas.getContext('2d');
+
+function applyDPR(cssPx){
+  const dpr=window.devicePixelRatio||1;
+  canvas.width=Math.round(cssPx*dpr);
+  canvas.height=Math.round(cssPx*dpr);
+  ctx.setTransform((cssPx*dpr)/NATIVE,0,0,(cssPx*dpr)/NATIVE,0,0);
+}
+applyDPR(NATIVE); // placeholder until rescale runs
+
+// ═══════════════════════════════════════════════
+//  SCALING
+//  Clock ≈ 40 % of viewport width (capped by height).
+//  Remaining width is the panel; digital clock fills it.
+// ═══════════════════════════════════════════════
+function rescale(){
+  const vh=window.innerHeight, vw=window.innerWidth;
+  // Clock: at most 40 % width or 92 % height, whichever is smaller
+  const clockPx=Math.max(160,Math.min(Math.round(vw*0.40),Math.round(vh*0.92)));
+  const wrap=document.getElementById('clockWrap');
+  wrap.style.width=clockPx+'px'; wrap.style.height=clockPx+'px';
+  applyDPR(clockPx);
+
+  // Panel width available for the digital readout
+  const panelPx=vw-clockPx-40;
+
+  // Measure "00:00:00" at 100 px to find scale factor
+  const PROBE=100;
+  const el=document.createElement('span');
+  el.style.cssText=`font-family:'Kalinga','Georgia',serif;font-size:${PROBE}px;position:fixed;visibility:hidden;white-space:nowrap`;
+  el.textContent='00:00:00';
+  document.body.appendChild(el);
+  const pw=el.offsetWidth||520;
+  document.body.removeChild(el);
+
+  // Scale time to fill ~92 % of panel width; cap at 30 % of viewport height
+  const timePx=Math.min(Math.round(panelPx*0.92/pw*PROBE),Math.round(vh*0.30));
+  const datePx=Math.round(timePx*0.29);
+  const bannerPx=Math.round(timePx*0.14);
+
+  document.getElementById('timeEl').style.fontSize=timePx+'px';
+  document.getElementById('dateEl').style.fontSize=datePx+'px';
+  document.getElementById('banner').style.fontSize=bannerPx+'px';
+}
+window.addEventListener('resize',rescale);
+
+function applyStyles(){
+  const g=cfg.global;
+  document.body.style.background=g.bgColor||'#000';
+  const col=g.digitalColor||'#FFB800';
+  document.getElementById('dateEl').style.color=col;
+  document.getElementById('timeEl').style.color=col;
+}
+
+// ═══════════════════════════════════════════════
+//  GEOMETRY
+// ═══════════════════════════════════════════════
+function mTA(min){ return (min/60)*Math.PI*2-Math.PI/2; }
+
+function getLayout(){
+  const gap=6; let cursor=450; const layout=[];
+  cfg.rings.forEach(ring=>{
+    if(ring.radiusGroup){
+      const leader=layout.find(l=>l.ring.id===ring.radiusGroup);
+      if(leader){layout.push({ro:leader.ro,ri:leader.ri,ring,shared:true});return;}
+    }
+    const ro=cursor,ri=ro-ring.thickness;
+    layout.push({ro,ri,ring,shared:false});
+    cursor=ri-gap;
+  });
+  return layout;
+}
+
+function fillArc(ro,ri,s,e,color){
+  ctx.save();ctx.fillStyle=color;ctx.beginPath();
+  if(s===0&&e===60){
+    ctx.arc(CX,CY,ro,0,Math.PI*2,false);ctx.arc(CX,CY,ri,0,Math.PI*2,true);
+  }else{
+    const a1=mTA(s),a2=mTA(e),top=-Math.PI/2;
+    if(e>s){ctx.arc(CX,CY,ro,a1,a2,false);ctx.arc(CX,CY,ri,a2,a1,true);}
+    else{ctx.arc(CX,CY,ro,a1,top+Math.PI*2,false);ctx.arc(CX,CY,ro,top,a2,false);ctx.arc(CX,CY,ri,a2,top,true);ctx.arc(CX,CY,ri,top+Math.PI*2,a1,true);}
+  }
+  ctx.closePath();ctx.fill();ctx.restore();
+}
+
+function radialTick(ro,ri,min,color,lw){
+  const a=mTA(min);
+  ctx.save();ctx.strokeStyle=color;ctx.lineWidth=lw||5;ctx.lineCap='round';
+  ctx.beginPath();ctx.moveTo(CX+ro*Math.cos(a),CY+ro*Math.sin(a));ctx.lineTo(CX+ri*Math.cos(a),CY+ri*Math.sin(a));
+  ctx.stroke();ctx.restore();
+}
+
+// T=0 marker — drawn in world coords, no ctx rotation
+function drawT0(ro,ri,color,hw,shape,lr){
+  lr=lr||1.0;
+  const len=(ro-ri)*lr,riA=ro-len;
+  const oy=CY-ro,iy=CY-riA,my=(oy+iy)/2;
+  ctx.save();ctx.fillStyle=color;ctx.beginPath();
+  switch(shape||'rectangle'){
+    case 'rectangle': ctx.rect(CX-hw,oy,hw*2,len);break;
+    case 'triangle':  ctx.moveTo(CX,oy);ctx.lineTo(CX-hw,iy);ctx.lineTo(CX+hw,iy);break;
+    case 'diamond':   ctx.moveTo(CX,oy);ctx.lineTo(CX-hw,my);ctx.lineTo(CX,iy);ctx.lineTo(CX+hw,my);break;
+    case 'trapezoid': ctx.moveTo(CX-hw,oy);ctx.lineTo(CX+hw,oy);ctx.lineTo(CX+hw*.5,iy);ctx.lineTo(CX-hw*.5,iy);break;
+    case 'keystone':  ctx.moveTo(CX-hw*.5,oy);ctx.lineTo(CX+hw*.5,oy);ctx.lineTo(CX+hw,iy);ctx.lineTo(CX-hw,iy);break;
+  }
+  ctx.closePath();ctx.fill();ctx.restore();
+}
+
+// ═══════════════════════════════════════════════
+//  TEXTURES (unchanged from previous version)
+// ═══════════════════════════════════════════════
+function mb32(s){let a=s;return()=>{a|=0;a=(a+0x6D2B79F5)|0;let t=Math.imul(a^(a>>>15),1|a);t=(t+Math.imul(t^(t>>>7),61|t))^t;return((t^(t>>>14))>>>0)/4294967296;};}
+
+function drawTexture(faceR,texId){
+  if(!texId||texId==='none')return;
+  ctx.save();
+  switch(texId){
+    case 'guilloché': ctx.globalAlpha=0.045;for(let i=0;i<36;i++){const a=i*Math.PI/18;ctx.beginPath();ctx.moveTo(CX,CY);ctx.arc(CX,CY,faceR,a,a+Math.PI/18);ctx.closePath();ctx.fillStyle=i%2?'#000':'#fff';ctx.fill();}ctx.globalAlpha=0.055;for(let r=faceR*.08;r<faceR;r+=faceR*.07){ctx.beginPath();ctx.arc(CX,CY,r,0,Math.PI*2);ctx.strokeStyle='rgba(255,255,255,1)';ctx.lineWidth=0.6;ctx.stroke();}break;
+    case 'sunburst': ctx.globalAlpha=.10;for(let i=0;i<120;i++){const a=(i/120)*Math.PI*2;ctx.beginPath();ctx.moveTo(CX,CY);ctx.lineTo(CX+faceR*Math.cos(a),CY+faceR*Math.sin(a));ctx.strokeStyle=i%2?'rgba(255,255,255,.3)':'rgba(255,255,255,.9)';ctx.lineWidth=.8;ctx.stroke();}ctx.globalAlpha=1;{const sg=ctx.createRadialGradient(CX,CY,0,CX,CY,faceR);sg.addColorStop(0,'rgba(255,255,255,.14)');sg.addColorStop(.5,'rgba(255,255,255,.04)');sg.addColorStop(1,'rgba(0,0,0,.12)');ctx.fillStyle=sg;ctx.beginPath();ctx.arc(CX,CY,faceR,0,Math.PI*2);ctx.fill();}break;
+    case 'fumé': {const fg=ctx.createRadialGradient(CX,CY,faceR*.05,CX,CY,faceR);fg.addColorStop(0,'rgba(180,200,255,.18)');fg.addColorStop(.45,'rgba(100,120,180,.06)');fg.addColorStop(1,'rgba(0,0,0,.55)');ctx.fillStyle=fg;ctx.beginPath();ctx.arc(CX,CY,faceR,0,Math.PI*2);ctx.fill();}break;
+    case 'sector': for(let i=0;i<8;i++){const a1=(i/8)*Math.PI*2,a2=((i+1)/8)*Math.PI*2;ctx.beginPath();ctx.moveTo(CX,CY);ctx.arc(CX,CY,faceR,a1,a2);ctx.closePath();ctx.fillStyle=i%2?'rgba(0,0,0,.08)':'rgba(255,255,255,.06)';ctx.fill();}ctx.globalAlpha=.07;for(let y=CY-faceR;y<CY+faceR;y+=faceR*.095){const dx=Math.sqrt(Math.max(0,faceR*faceR-(y-CY)**2));ctx.beginPath();ctx.moveTo(CX-dx,y);ctx.lineTo(CX+dx,y);ctx.strokeStyle='rgba(200,220,255,1)';ctx.lineWidth=.8;ctx.stroke();}break;
+    case 'grand-seiko': ctx.globalAlpha=.08;for(let x=CX-faceR;x<CX+faceR;x+=faceR*.025){const dy=Math.sqrt(Math.max(0,faceR*faceR-(x-CX)**2));ctx.beginPath();ctx.moveTo(x,CY-dy);ctx.lineTo(x,CY+dy);ctx.strokeStyle='rgba(255,255,255,1)';ctx.lineWidth=.5;ctx.stroke();}ctx.globalAlpha=.05;for(let d=-faceR*2;d<faceR*2;d+=faceR*.04){ctx.beginPath();ctx.moveTo(CX-faceR,CY+d-faceR);ctx.lineTo(CX+faceR,CY+d+faceR);ctx.strokeStyle='rgba(200,230,255,1)';ctx.lineWidth=.4;ctx.stroke();}ctx.globalAlpha=.15;{const rng=mb32(42);for(let i=0;i<80;i++){const a=rng()*Math.PI*2,dist=rng()*faceR*.95;ctx.beginPath();ctx.arc(CX+dist*Math.cos(a),CY+dist*Math.sin(a),rng()*1.2+.3,0,Math.PI*2);ctx.fillStyle='rgba(255,255,255,1)';ctx.fill();}}break;
+    case 'regal-oak': {ctx.globalAlpha=.09;const sq=faceR*.055;for(let y=CY-faceR;y<CY+faceR;y+=sq)for(let x=CX-faceR;x<CX+faceR;x+=sq){if((x-CX)**2+(y-CY)**2>faceR*faceR)continue;ctx.fillStyle=(Math.round((x-CX)/sq)+Math.round((y-CY)/sq))%2===0?'rgba(255,255,255,1)':'rgba(0,0,0,1)';ctx.fillRect(x,y,sq,sq);}ctx.globalAlpha=.12;ctx.strokeStyle='rgba(255,255,255,.4)';ctx.lineWidth=.4;for(let y=CY-faceR;y<CY+faceR;y+=sq){const dx=Math.sqrt(Math.max(0,faceR*faceR-(y-CY)**2));ctx.beginPath();ctx.moveTo(CX-dx,y);ctx.lineTo(CX+dx,y);ctx.stroke();}for(let x=CX-faceR;x<CX+faceR;x+=sq){const dy=Math.sqrt(Math.max(0,faceR*faceR-(x-CX)**2));ctx.beginPath();ctx.moveTo(x,CY-dy);ctx.lineTo(x,CY+dy);ctx.stroke();}}break;
+    case 'nemo': {const sh=faceR*.072;for(let y=CY-faceR;y<CY+faceR;y+=sh){const dx=Math.sqrt(Math.max(0,faceR*faceR-(y-CY)**2));if(dx<2)continue;const even=Math.round((y-(CY-faceR))/sh)%2===0;const sg3=ctx.createLinearGradient(CX-dx,y,CX+dx,y+sh);if(even){sg3.addColorStop(0,'rgba(255,255,255,.08)');sg3.addColorStop(.5,'rgba(255,255,255,.12)');sg3.addColorStop(1,'rgba(255,255,255,.08)');}else{sg3.addColorStop(0,'rgba(0,0,0,.08)');sg3.addColorStop(.5,'rgba(0,0,0,.13)');sg3.addColorStop(1,'rgba(0,0,0,.08)');}ctx.fillStyle=sg3;ctx.beginPath();ctx.moveTo(CX-dx,y);ctx.lineTo(CX+dx,y);ctx.lineTo(CX+dx,y+sh);ctx.lineTo(CX-dx,y+sh);ctx.closePath();ctx.fill();ctx.globalAlpha=.18;ctx.beginPath();ctx.moveTo(CX-dx,y);ctx.lineTo(CX+dx,y);ctx.strokeStyle='rgba(255,255,255,.5)';ctx.lineWidth=.6;ctx.stroke();ctx.globalAlpha=1;}}break;
+    case 'goldeneye': {ctx.globalAlpha=.11;const wa=faceR*.04,wl=faceR*.22,bs=faceR*.075;for(let band=0;band<faceR*2/bs+2;band++){const bY=CY-faceR+band*bs;ctx.beginPath();let fi=true;for(let x=CX-faceR-10;x<=CX+faceR+10;x+=2){const y=bY+Math.sin((x/wl)*Math.PI*2)*wa;if(fi){ctx.moveTo(x,y);fi=false;}else ctx.lineTo(x,y);}ctx.strokeStyle=band%2===0?'rgba(100,160,255,.9)':'rgba(200,230,255,.6)';ctx.lineWidth=band%2===0?1.2:.6;ctx.stroke();}ctx.globalCompositeOperation='destination-in';ctx.beginPath();ctx.arc(CX,CY,faceR,0,Math.PI*2);ctx.fill();ctx.globalCompositeOperation='source-over';}break;
+  }
+  ctx.restore();
+}
+
+// ═══════════════════════════════════════════════
+//  FACE
+// ═══════════════════════════════════════════════
+function drawFace(faceR){
+  const segs=cfg.face.segments||DC.face.segments;
+  const showLbls=cfg.face.showQuadrantLabels===true;
+  segs.forEach((seg,i)=>{
+    const a1=mTA(i*15),a2=i===3?mTA(0)+Math.PI*2:mTA((i+1)*15);
+    ctx.beginPath();ctx.moveTo(CX,CY);ctx.arc(CX,CY,faceR,a1,a2,false);ctx.closePath();ctx.fillStyle=seg.darkColor;ctx.fill();
+    ctx.beginPath();ctx.moveTo(CX,CY);ctx.arc(CX,CY,faceR*.6,a1,a2,false);ctx.closePath();ctx.fillStyle=seg.lightColor;ctx.fill();
+    ctx.save();ctx.strokeStyle='#000';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(CX,CY);ctx.lineTo(CX+faceR*Math.cos(a1),CY+faceR*Math.sin(a1));ctx.stroke();ctx.restore();
+    if(showLbls&&seg.label){
+      // Centred within quadrant (angular + radial midpoint)
+      const midA=(a1+a2)/2, lr=faceR*.72;
+      ctx.save();ctx.translate(CX+lr*Math.cos(midA),CY+lr*Math.sin(midA));
+      ctx.font="bold 26px 'Kalinga','Trebuchet MS',sans-serif";ctx.fillStyle='rgba(255,255,255,.7)';ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText(seg.label,0,0);ctx.restore();
+    }
+  });
+  drawTexture(faceR,cfg.face.texture||'none');
+  if(cfg.face.showHourNumerals){
+    for(let h=1;h<=12;h++){const a=mTA(h*5),nr=faceR*.86;ctx.save();ctx.translate(CX+nr*Math.cos(a),CY+nr*Math.sin(a));ctx.font="bold 18px 'Kalinga','Trebuchet MS',sans-serif";ctx.fillStyle='rgba(255,255,255,.6)';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(h,0,0);ctx.restore();}
+  }
+}
+
+function drawTicks(innerR){
+  const style=cfg.face.tickStyle||'simple';if(style==='none')return;
+  const ro=innerR-2;
+  for(let m=0;m<60;m++){const a=mTA(m),maj=m%5===0;const len=style==='railway'?(maj?18:m%2===0?10:5):(maj?15:7);ctx.beginPath();ctx.moveTo(CX+ro*Math.cos(a),CY+ro*Math.sin(a));ctx.lineTo(CX+(ro-len)*Math.cos(a),CY+(ro-len)*Math.sin(a));ctx.strokeStyle=maj?'rgba(255,255,255,.55)':'rgba(255,255,255,.20)';ctx.lineWidth=maj?2:1;ctx.stroke();}
+}
+
+// ═══════════════════════════════════════════════
+//  LABELS
+//  Kalinga (system font on all Windows; falls back to
+//  Trebuchet MS / Gill Sans on macOS / Linux).
+//  Canvas text at proper DPR → no blur.
+// ═══════════════════════════════════════════════
+const LF="'Kalinga','Trebuchet MS',sans-serif";
+
+function arcMid(s,e){if(e>=s)return(s+e)/2;const sp=(60-s)+e;const m=s+sp/2;return m>=60?m-60:m;}
+
+function drawCurved(text,r,midMin,sz,col){
+  if(!text)return;
+  const chars=text.split('');
+  ctx.font=`bold ${sz}px ${LF}`;
+  const total=chars.reduce((acc,c)=>acc+ctx.measureText(c).width/r,0);
+  let ang=mTA(midMin)-total/2;
+  ctx.save();ctx.fillStyle=col;
+  chars.forEach(ch=>{
+    ctx.font=`bold ${sz}px ${LF}`;
+    const w=ctx.measureText(ch).width/r;
+    const a=ang+w/2;
+    ctx.save();ctx.translate(CX+r*Math.cos(a),CY+r*Math.sin(a));ctx.rotate(a+Math.PI/2);ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(ch,0,0);ctx.restore();
+    ang+=w;
+  });
+  ctx.restore();
+}
+
+function ringLabel(text,r,midMin,ls){
+  if(!text)return;
+  const gl=cfg.labelStyle||DC.labelStyle;
+  const inh=!ls||ls.inherit!==false;
+  const curved=inh?gl.curved:ls.curved;
+  const sz=inh?gl.fontSize:(ls.fontSize||gl.fontSize);
+  const col=inh?gl.color:(ls.color||gl.color);
+  const centered=inh?(gl.centered!==false):(ls.centered!==false);
+  const lMin=centered?midMin:33;
+  if(curved){drawCurved(text,r,lMin,sz,col);return;}
+  const a=mTA(lMin);
+  ctx.save();ctx.translate(CX+r*Math.cos(a),CY+r*Math.sin(a));ctx.rotate(a+Math.PI/2);
+  ctx.font=`bold ${sz}px ${LF}`;ctx.fillStyle=col;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(text,0,0);ctx.restore();
+}
+
+// ═══════════════════════════════════════════════
+//  HANDS (tip at +len,0; tail at -tail,0; width ±y)
+// ═══════════════════════════════════════════════
+function hand(angle,len,width,color,shape){
+  const tail=16;
+  ctx.save();ctx.translate(CX,CY);ctx.rotate(angle);ctx.shadowColor='rgba(0,0,0,.7)';ctx.shadowBlur=8;
+  switch(shape||'baton'){
+    case 'baton':    ctx.beginPath();ctx.moveTo(-tail,-width/2);ctx.lineTo(len,-width/2);ctx.lineTo(len,width/2);ctx.lineTo(-tail,width/2);ctx.closePath();ctx.fillStyle=color;ctx.fill();break;
+    case 'triangle': ctx.beginPath();ctx.moveTo(len,0);ctx.lineTo(-tail,-width/2);ctx.lineTo(-tail,width/2);ctx.closePath();ctx.fillStyle=color;ctx.fill();break;
+    case 'sword':    ctx.beginPath();ctx.moveTo(len,0);ctx.lineTo(len*.3,-width/2);ctx.lineTo(-tail,-width*.15);ctx.lineTo(-tail,width*.15);ctx.lineTo(len*.3,width/2);ctx.closePath();ctx.fillStyle=color;ctx.fill();break;
+    case 'skeleton': ctx.beginPath();ctx.moveTo(-tail,-width/2);ctx.lineTo(len,-width/2);ctx.lineTo(len,width/2);ctx.lineTo(-tail,width/2);ctx.closePath();ctx.strokeStyle=color;ctx.lineWidth=2.5;ctx.stroke();break;
+    case 'submariner':{const lr=width,tx=len;ctx.beginPath();ctx.moveTo(-tail,-width*.42);ctx.lineTo(tx-lr*1.1,-width*.42);ctx.lineTo(tx-lr*1.1,width*.42);ctx.lineTo(-tail,width*.42);ctx.closePath();ctx.fillStyle=color;ctx.fill();[0,120,240].forEach(d=>{const r=d*Math.PI/180;ctx.beginPath();ctx.arc(tx+Math.cos(r)*lr,Math.sin(r)*lr,lr,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();});ctx.beginPath();ctx.arc(tx,0,lr*.44,0,Math.PI*2);ctx.fillStyle='rgba(0,0,0,.75)';ctx.fill();break;}
+    case 'twodoor':  {const dr=width*1.4,dx=len-dr*.9,sw=width*.42;ctx.beginPath();ctx.moveTo(-tail,-sw*1.3);ctx.lineTo(dx,-sw);ctx.lineTo(dx,sw);ctx.lineTo(-tail,sw*1.3);ctx.closePath();ctx.fillStyle=color;ctx.fill();ctx.beginPath();ctx.arc(dx,0,dr,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();ctx.beginPath();ctx.arc(dx,0,dr*.38,0,Math.PI*2);ctx.fillStyle='rgba(0,0,0,.65)';ctx.fill();break;}
+  }
+  ctx.restore();
+}
+
+function minHand(angle,len,width,color,shape){
+  const tail=16;
+  if(shape==='submariner'){
+    ctx.save();ctx.translate(CX,CY);ctx.rotate(angle);ctx.shadowColor='rgba(0,0,0,.7)';ctx.shadowBlur=8;
+    ctx.beginPath();ctx.moveTo(-tail,-width/2);ctx.lineTo(len,-width/2);ctx.lineTo(len,width/2);ctx.lineTo(-tail,width/2);ctx.closePath();ctx.fillStyle=color;ctx.fill();
+    const hw=width*.30;ctx.beginPath();ctx.rect(len*.07,-hw,len*.80,hw*2);ctx.fillStyle='rgba(0,0,0,.72)';ctx.fill();ctx.restore();
+  }else if(shape==='twodoor'){
+    ctx.save();ctx.translate(CX,CY);ctx.rotate(angle);ctx.shadowColor='rgba(0,0,0,.7)';ctx.shadowBlur=8;
+    const sw=Math.max(2.5,width*.30);
+    ctx.beginPath();ctx.moveTo(-tail,sw*1.5);ctx.lineTo(-len*.18,sw);ctx.lineTo(len,sw);ctx.lineTo(len,-sw);ctx.lineTo(-len*.18,-sw);ctx.lineTo(-tail,-sw*1.5);ctx.closePath();ctx.fillStyle=color;ctx.fill();ctx.restore();
+  }else{hand(angle,len,width,color,shape);}
+}
+
+function secHand(angle,len,color,lollipop){
+  ctx.save();ctx.translate(CX,CY);ctx.rotate(angle);ctx.strokeStyle=color;ctx.lineWidth=2.5;ctx.lineCap='round';ctx.shadowColor=color+'55';ctx.shadowBlur=6;
+  ctx.beginPath();ctx.moveTo(-32,0);ctx.lineTo(len,0);ctx.stroke();
+  if(lollipop){const dx=len*.72;ctx.beginPath();ctx.arc(dx,0,6,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();ctx.beginPath();ctx.arc(dx,0,3,0,Math.PI*2);ctx.fillStyle='rgba(0,0,0,.75)';ctx.fill();}
+  ctx.restore();
+}
+
+function secAngle(now){
+  const s=now.getSeconds(),ms=now.getMilliseconds(),st=cfg.global.secondStyle||'quartz';
+  if(st==='springdrive')return mTA((s+ms/1000)/60*60);
+  if(st==='mechanical') return mTA((s+Math.floor(ms/125)/8)/60*60);
+  return mTA(s/60*60);
+}
+
+// ═══════════════════════════════════════════════
+//  MAIN DRAW
+// ═══════════════════════════════════════════════
+function drawClock(now){
+  ctx.clearRect(0,0,NATIVE,NATIVE);
+  const layout=getLayout();
+  const own=layout.filter(l=>!l.shared);
+  const faceR=own.length?own[own.length-1].ri-8:260;
+  const outerR=own.length?own[0].ro:450;
+  const g=cfg.global;
+
+  // Rings
+  layout.forEach(({ro,ri,ring,shared})=>{
+    if(!shared&&(ring.startMin!==0||ring.endMin!==60))fillArc(ro,ri,0,60,'#060810');
+    fillArc(ro,ri,ring.startMin,ring.endMin,ring.color);
+    if(ring.over60&&ring.over60.enabled){const o=ring.over60,sr=ri+(ro-ri)*(1-o.subArcThicknessRatio);fillArc(ro,sr,o.subArcStart,o.subArcEnd,o.subArcColor);}
+  });
+
+  // Carets — anchored at ring's inner edge (ri), extend outward by caretLengthPx
+  // or snap outer end to another ring's outer edge (ro) if caretSnapTo is set
+  layout.forEach(({ri,ring})=>{
+    if(ring.type!=='deadline'||ring.caretMin==null)return;
+    const caretRi=ri;
+    let caretRo;
+    if(ring.caretSnapTo){
+      const snap=layout.find(l=>l.ring.id===ring.caretSnapTo);
+      caretRo=snap?snap.ro:ri+(ring.caretLengthPx||56);
+    }else{
+      caretRo=ri+(ring.caretLengthPx||56);
+    }
+    radialTick(caretRo,caretRi,ring.caretMin,ring.caretColor,5);
+  });
+
+  // T=0 marker
+  const t0=cfg.t0Caret||{color:'#CC1111',width:8,shape:'rectangle',lengthRatio:1.0};
+  drawT0(outerR+4,faceR,t0.color,t0.width/2,t0.shape||'rectangle',t0.lengthRatio||1.0);
+
+  // Labels — ALL rings (interval + deadline)
+  layout.forEach(({ro,ri,ring})=>{
+    const mid=(ro+ri)/2;
+    const ls=ring.labelStyle||{inherit:true};
+    const midMin=arcMid(ring.startMin,ring.endMin);
+    ringLabel(ring.label,mid,midMin,ls);
+  });
+
+  // Face
+  drawFace(faceR);
+  drawTicks(own.length?own[own.length-1].ri:faceR+8);
+  ctx.beginPath();ctx.arc(CX,CY,26,0,Math.PI*2);ctx.fillStyle='#040406';ctx.fill();
+
+  // Hands
+  const h=now.getHours()%12,m=now.getMinutes(),s=now.getSeconds();
+  const hA=mTA(((h+m/60)/12)*60);
+  const mA=mTA(m+s/60);
+  const sA=secAngle(now);
+  const sh=g.handShape||'baton';
+  const mLen=g.minuteHandSnap?outerR:(g.minuteHandLength||420);
+  const hLen=faceR*.54;
+  const lolli=sh==='submariner'||sh==='twodoor';
+  hand(hA,hLen,g.hourHandWidth||10,g.hourHandColor||'#CCCCCC',sh);
+  minHand(mA,mLen,g.minuteHandWidth||6,g.minuteHandColor||'#E0E0E0',sh);
+  secHand(sA,outerR*.97,g.secondHandColor||'#FFB800',lolli);
+  ctx.beginPath();ctx.arc(CX,CY,13,0,Math.PI*2);ctx.fillStyle=g.secondHandColor||'#FFB800';ctx.fill();
+  ctx.beginPath();ctx.arc(CX,CY, 5,0,Math.PI*2);ctx.fillStyle='#111';ctx.fill();
+}
+
+// ═══════════════════════════════════════════════
+//  ALARM ENGINE
+// ═══════════════════════════════════════════════
+const PI_STATE={bpSent:false,t55Flag:false,t40Flag:false,eimBal:15.2};
+const AS={activeId:null,snoozed:{},lastFired:{},lastSec:-1,audioCtx:null};
+function getMF(n){return n.getMinutes()/60+n.getSeconds()/3600;}
+function inWin(a,mf){const s=a.startMin/60,e=a.endMin/60;return e>s?(mf>=s&&mf<e):(mf>=s||mf<e%1);}
+function getAlarm(mf){for(const a of cfg.alarms){if(!a.enabled||!inWin(a,mf))continue;if(a.piFlag&&PI_STATE[a.piFlag]===true)continue;return a;}return null;}
+function handleAlarms(now){
+  const mf=getMF(now);
+  Object.keys(AS.snoozed).forEach(id=>{const a=cfg.alarms.find(x=>x.id===id);if(!a||!inWin(a,mf))delete AS.snoozed[id];});
+  const alarm=getAlarm(mf);
+  if(!alarm){clrInd();showSnz(false,'');AS.activeId=null;return;}
+  if(AS.snoozed[alarm.id]){clrInd();showSnz(false,'');return;}
+  const txt=alarm.indicatorText.replace('{eimBal}',PI_STATE.eimBal.toFixed(0)).replace('{nextHour}',pad((now.getHours()+1)%24));
+  setInd(txt,alarm.indicatorColor);showSnz(true,alarm.label);AS.activeId=alarm.id;
+  if(alarm.escalating){
+    const sc=Math.round(3600*(mf-alarm.startMin/60)),sv=now.getSeconds();
+    if(sv!==AS.lastSec){AS.lastSec=sv;let go=false;if(sc<60&&sc%15===0)go=true;else if(sc<120&&sc%10===0)go=true;else if(sc<180&&sc%5===0)go=true;else if(sc<240&&sc%3===0)go=true;if(go){tone();flashB(alarm.indicatorColor);}}
+  }else{const k=alarm.id+'_'+now.getHours();if(!AS.lastFired[k]){AS.lastFired[k]=true;tone();flashB(alarm.indicatorColor);}}
+  if(document.getElementById('cbSpeech').checked){const sk=alarm.id+'_sp_'+now.getHours();if(!AS.lastFired[sk]){AS.lastFired[sk]=true;speak(txt);}}
+}
+const bannerEl=document.getElementById('banner');let flashTO=null;
+function setInd(t,c){bannerEl.textContent=t;bannerEl.className=`indicator-banner ${c}`;}
+function clrInd(){bannerEl.textContent='';bannerEl.className='indicator-banner';}
+function flashB(c){bannerEl.classList.add('flash');clearTimeout(flashTO);flashTO=setTimeout(()=>bannerEl.classList.remove('flash'),450);}
+function showSnz(show,label){const b=document.getElementById('btnSnooze');b.classList.toggle('visible',show);if(show)b.textContent=`Snooze ${label} Alarm`;}
+function snoozeAlarm(){if(AS.activeId){AS.snoozed[AS.activeId]=true;clrInd();showSnz(false,'');}}
+function tone(){try{const ac=AS.audioCtx||(AS.audioCtx=new(window.AudioContext||window.webkitAudioContext)()),o=ac.createOscillator(),g=ac.createGain();o.connect(g);g.connect(ac.destination);const t=ac.currentTime;o.type='square';o.frequency.setValueAtTime(880,t);o.frequency.setValueAtTime(660,t+.12);g.gain.setValueAtTime(.28,t);g.gain.exponentialRampToValueAtTime(.001,t+.45);o.start(t);o.stop(t+.45);}catch(e){}}
+function speak(t){if(window.speechSynthesis)window.speechSynthesis.speak(new SpeechSynthesisUtterance(t));}
+
+const DAYS=['SUN','MON','TUE','WED','THU','FRI','SAT'];
+const MONTHS=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+function pad(n){return String(n).padStart(2,'0');}
+function updateDigital(now){
+  document.getElementById('hh').textContent=pad(now.getHours());
+  document.getElementById('mm').textContent=pad(now.getMinutes());
+  document.getElementById('ss').textContent=pad(now.getSeconds());
+  document.getElementById('dateEl').textContent=`${DAYS[now.getDay()]} ${MONTHS[now.getMonth()]} ${pad(now.getDate())} ${now.getFullYear()}`;
+}
+document.getElementById('cbPause').addEventListener('change',e=>{if(!e.target.checked)requestAnimationFrame(tick);});
+function tick(){
+  if(document.getElementById('cbPause').checked)return;
+  const now=new Date();updateDigital(now);drawClock(now);handleAlarms(now);
+  requestAnimationFrame(tick);
+}
+applyStyles();
+// Defer first rescale so font can load before we measure text width
+setTimeout(()=>{rescale();requestAnimationFrame(tick);},150);
+</script>
+</body>
+</html>

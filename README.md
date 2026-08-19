@@ -145,7 +145,7 @@ Six hand styles for different operational aesthetics:
 - `sword` — tapered
 - `skeleton` — outline only
 - `submariner` — disc and needle
-- `twodoor` — Black Bay style (disc with shoulder step)
+- `twodoor` — Snowflake style, Tudor Black Bay-inspired (square paddle block set back from the tip)
 
 ## Data Integration
 

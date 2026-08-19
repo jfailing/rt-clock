@@ -93,7 +93,7 @@ input[type=checkbox]{accent-color:var(--gold);width:13px;height:13px;cursor:poin
   <div class="hact">
     <button class="btn btn-g" onclick="resetToDefaults()">Reset Defaults</button>
     <button class="btn btn-g" onclick="exportCfg()">Export JSON</button>
-    <button class="btn btn-p" onclick="saveAndLaunch()">Save &amp; Launch Clock</button>
+    <button class="btn btn-p" id="btnSaveLaunch" onclick="saveAndLaunch()">Save &amp; Launch Clock</button>
   </div>
 </header>
 <main>
@@ -139,6 +139,10 @@ input[type=checkbox]{accent-color:var(--gold);width:13px;height:13px;cursor:poin
   <div class="sbdy" id="body-face">
     <label class="fl">Dial Texture</label>
     <div class="face-grid" id="faceTexGrid" style="margin-top:4px"></div>
+    <div style="margin-top:8px"><label class="fl">Texture Intensity</label>
+      <div class="fh">Dims the dial pattern so it doesn't compete with rings/hands — 100% = full strength.</div>
+      <div class="rr" style="margin-top:4px"><input type="range" id="f_texOp" min="0" max="1" step="0.05" oninput="applyTexOp()"><span class="rv" id="f_texOpV">100%</span></div>
+    </div>
     <hr class="div">
     <label class="fl">Quadrant Colors</label>
     <div class="seg-grid" id="segGrid" style="margin-top:4px"></div>
@@ -149,7 +153,32 @@ input[type=checkbox]{accent-color:var(--gold);width:13px;height:13px;cursor:poin
       <option value="railway">Railway (classic watchmaking)</option>
       <option value="none">None</option>
     </select>
+    <div class="card" style="margin-top:8px">
+      <div class="chdr" onclick="toggleCard('tkBody','tkChev')">
+        <span class="ct">Tick Mark Appearance</span>
+        <span class="cchev op" id="tkChev">▼</span>
+      </div>
+      <div class="cbdy col" id="tkBody">
+        <div><label class="fl">Color</label><div class="cr" style="margin-top:4px"><input type="color" id="tk_col" onchange="applyTicks()"><input type="text" id="tk_colT" style="width:78px" oninput="cpS('tk_colT','tk_col')" onchange="applyTicks()"></div></div>
+        <div class="two">
+          <div><label class="fl">Major Length</label><div class="rr" style="margin-top:4px"><input type="range" id="tk_majLen" min="5" max="40" oninput="rrS('tk_majLen','tk_majLenV');applyTicks()"><span class="rv" id="tk_majLenV">15</span></div></div>
+          <div><label class="fl">Minor Length</label><div class="rr" style="margin-top:4px"><input type="range" id="tk_minLen" min="2" max="25" oninput="rrS('tk_minLen','tk_minLenV');applyTicks()"><span class="rv" id="tk_minLenV">7</span></div></div>
+        </div>
+        <div class="two">
+          <div><label class="fl">Major Width</label><div class="rr" style="margin-top:4px"><input type="range" id="tk_majW" min="1" max="6" oninput="rrS('tk_majW','tk_majWV');applyTicks()"><span class="rv" id="tk_majWV">2</span></div></div>
+          <div><label class="fl">Minor Width</label><div class="rr" style="margin-top:4px"><input type="range" id="tk_minW" min="1" max="4" oninput="rrS('tk_minW','tk_minWV');applyTicks()"><span class="rv" id="tk_minWV">1</span></div></div>
+        </div>
+        <div class="two">
+          <div><label class="fl">Major Opacity</label><div class="rr" style="margin-top:4px"><input type="range" id="tk_majOp" min="0.05" max="1" step="0.05" oninput="rrS('tk_majOp','tk_majOpV');applyTicks()"><span class="rv" id="tk_majOpV">0.55</span></div></div>
+          <div><label class="fl">Minor Opacity</label><div class="rr" style="margin-top:4px"><input type="range" id="tk_minOp" min="0.05" max="1" step="0.05" oninput="rrS('tk_minOp','tk_minOpV');applyTicks()"><span class="rv" id="tk_minOpV">0.20</span></div></div>
+        </div>
+      </div>
+    </div>
     <hr class="div">
+    <div class="two">
+      <div><label class="fl">Quadrant Label Size</label><div class="rr" style="margin-top:4px"><input type="range" id="f_qSz" min="8" max="60" oninput="rrS('f_qSz','f_qSzV');cfg.face.quadrantLabelSize=+this.value;mu();rp()"><span class="rv" id="f_qSzV">26</span></div></div>
+      <div><label class="fl">Hour Numeral Size</label><div class="rr" style="margin-top:4px"><input type="range" id="f_hnSz" min="8" max="48" oninput="rrS('f_hnSz','f_hnSzV');cfg.face.hourNumeralSize=+this.value;mu();rp()"><span class="rv" id="f_hnSzV">18</span></div></div>
+    </div>
     <div class="tw"><label class="tog"><input type="checkbox" id="f_nums" onchange="cfg.face.showHourNumerals=this.checked;mu();rp()"><div class="tog-t"></div><div class="tog-k"></div></label><span class="tl">Show hour numerals (1–12)</span></div>
     <div class="tw"><label class="tog"><input type="checkbox" id="f_lbls" onchange="cfg.face.showQuadrantLabels=this.checked;mu();rp()"><div class="tog-t"></div><div class="tog-k"></div></label><span class="tl">Show quadrant time labels</span></div>
   </div>
@@ -199,7 +228,7 @@ input[type=checkbox]{accent-color:var(--gold);width:13px;height:13px;cursor:poin
   <div class="sbdy" id="body-labels">
     <p class="fh">Global defaults for ring labels. Individual rings can override in their card.</p>
     <div class="two">
-      <div><label class="fl">Font Size</label><div class="rr" style="margin-top:4px"><input type="range" id="ls_sz" min="8" max="24" oninput="rrS('ls_sz','ls_szV');applyLS()"><span class="rv" id="ls_szV">—</span></div></div>
+      <div><label class="fl">Font Size</label><div class="rr" style="margin-top:4px"><input type="range" id="ls_sz" min="8" max="48" oninput="rrS('ls_sz','ls_szV');applyLS()"><span class="rv" id="ls_szV">—</span></div></div>
       <div><label class="fl">Color</label><div class="cr" style="margin-top:4px"><input type="color" id="ls_col" onchange="applyLS()"><input type="text" id="ls_colT" style="width:72px" oninput="cpS('ls_colT','ls_col')" onchange="applyLS()"></div></div>
     </div>
     <div class="tw"><label class="tog"><input type="checkbox" id="ls_curve" onchange="applyLS()"><div class="tog-t"></div><div class="tog-k"></div></label><span class="tl">Curved text (follows arc)</span></div>
@@ -221,7 +250,7 @@ input[type=checkbox]{accent-color:var(--gold);width:13px;height:13px;cursor:poin
 <div class="save-bar">
   <span class="ss unsaved" id="saveStatus">Unsaved changes</span>
   <div style="display:flex;gap:9px">
-    <button class="btn btn-g" onclick="window.open('rt-clock.html','_blank')">Open Clock</button>
+    <button class="btn btn-g" id="btnOpenClock" onclick="openClockOrClose()">Open Clock</button>
     <button class="btn btn-p" onclick="saveCfg()">Save Config</button>
   </div>
 </div>
@@ -234,7 +263,9 @@ const DC={
   global:{fontFamily:'Kalinga',monoFont:'Kalinga',bgColor:'#000000',digitalColor:'#FFB800',
     minuteHandSnap:true,minuteHandLength:420,minuteHandWidth:6,minuteHandColor:'#E0E0E0',
     hourHandWidth:10,hourHandColor:'#CCCCCC',secondHandColor:'#FFB800',handShape:'baton',secondStyle:'quartz'},
-  face:{texture:'none',segments:[
+  face:{texture:'none',textureOpacity:1,quadrantLabelSize:26,hourNumeralSize:18,
+    ticks:{color:'#FFFFFF',majorLen:15,minorLen:7,majorWidth:2,minorWidth:1,majorOpacity:0.55,minorOpacity:0.20},
+    segments:[
     {label:'00-15',darkColor:'#1E3A18',lightColor:'#2E5424'},
     {label:'15-30',darkColor:'#28164A',lightColor:'#3E246C'},
     {label:'30-45',darkColor:'#421212',lightColor:'#621A1A'},
@@ -269,10 +300,37 @@ function pad(n){return String(n).padStart(2,'0')}
 try{const r=localStorage.getItem('rtClockConfig');if(r)cfg=JSON.parse(r);}catch(e){}
 
 // ═══════════════════════════════════════════════════════
+//  PARENT-FRAME BRIDGE
+//  This page runs two ways: (1) inside rt-clock.html's config overlay
+//  (an <iframe>), which is the normal path now, or (2) opened directly
+//  as its own tab (dev/testing, or a coworker who only took this file).
+//  IN_FRAME picks which behavior Save uses — same-origin postMessage vs.
+//  the original window.open()-a-new-clock-tab fallback.
+// ═══════════════════════════════════════════════════════
+const IN_FRAME=window.parent!==window;
+if(IN_FRAME){
+  // Relabel the two "leave this page" buttons to match what they now do.
+  document.getElementById('btnSaveLaunch').textContent='Save & Close';
+  document.getElementById('btnOpenClock').textContent='Close';
+}
+
+// targetOrigin '*' is used because this app also runs from file:// (no
+// real origin) per the README's Quick Start; the parent verifies
+// event.source instead, so this is safe even though the origin is unchecked.
+function pushToParent(closeAfter){
+  if(!IN_FRAME)return;
+  window.parent.postMessage({type:'rtclock-config-update',cfg,close:closeAfter},'*');
+}
+function closeParentOnly(){
+  if(!IN_FRAME)return;
+  window.parent.postMessage({type:'rtclock-config-close'},'*');
+}
+
+// ═══════════════════════════════════════════════════════
 //  OPTION TABLES
 // ═══════════════════════════════════════════════════════
 const FONTS=[{n:'Kalinga',s:'Kalinga'},{n:'Rajdhani',s:'Rajdhani'},{n:'Orbitron',s:'Orbitron'},{n:'Exo 2',s:'Exo 2'},{n:'Oswald',s:'Oswald'},{n:'Bebas Neue',s:'BEBAS'}];
-const SHAPES=[{id:'baton',l:'Baton'},{id:'triangle',l:'Dauphine'},{id:'sword',l:'Sword'},{id:'skeleton',l:'Skeleton'},{id:'submariner',l:'Sub-mariner'},{id:'twodoor',l:'Two-Door'}];
+const SHAPES=[{id:'baton',l:'Baton'},{id:'triangle',l:'Dauphine'},{id:'sword',l:'Sword'},{id:'skeleton',l:'Skeleton'},{id:'submariner',l:'Sub-mariner'},{id:'twodoor',l:'Snowflake'}];
 const SEC_STYLES=[{id:'quartz',n:'Quartz',d:'1 tick/sec'},{id:'mechanical',n:'Mechanical',d:'8 ticks/sec'},{id:'springdrive',n:'Spring Drive',d:'Smooth sweep'}];
 const TEXTURES=[{id:'none',l:'None'},{id:'guilloché',l:'Guilloché'},{id:'sunburst',l:'Sunburst'},{id:'fumé',l:'Fumé'},{id:'sector',l:'Sector'},{id:'grand-seiko',l:'Grd Seiko'},{id:'regal-oak',l:'Regal Oak'},{id:'nemo',l:'Nemo'},{id:'goldeneye',l:'Goldeneye'}];
 const T0_SHAPES=[{id:'rectangle',l:'Rect'},{id:'triangle',l:'Triangle'},{id:'diamond',l:'Diamond'},{id:'trapezoid',l:'Trapezoid'},{id:'keystone',l:'Keystone'}];
@@ -335,36 +393,40 @@ function arcMid(s,e){if(e>=s)return(s+e)/2;const sp=(60-s)+e;const m=s+sp/2;retu
 // ── Texture (preview version, reuses same logic) ──
 function mb32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
 
-function drawTex(faceR,texId){
+function drawTex(faceR,texId,opacity){
   if(!texId||texId==='none')return;
+  // Mirrors drawTexture() in rt-clock.html — see the comment there for why
+  // every alpha is multiplied by OP instead of wrapping the whole function.
+  const OP=opacity==null?1:opacity;
   pX.save();
+  pX.globalAlpha=OP;
   switch(texId){
     case 'guilloché':
-      pX.globalAlpha=0.045;for(let i=0;i<36;i++){const a=i*Math.PI/18;pX.beginPath();pX.moveTo(PCX,PCY);pX.arc(PCX,PCY,faceR,a,a+Math.PI/18);pX.closePath();pX.fillStyle=i%2?'#000':'#fff';pX.fill();}
-      pX.globalAlpha=0.055;for(let r=faceR*0.08;r<faceR;r+=faceR*0.07){pX.beginPath();pX.arc(PCX,PCY,r,0,Math.PI*2);pX.strokeStyle='rgba(255,255,255,1)';pX.lineWidth=0.6;pX.stroke();}break;
+      pX.globalAlpha=0.045*OP;for(let i=0;i<36;i++){const a=i*Math.PI/18;pX.beginPath();pX.moveTo(PCX,PCY);pX.arc(PCX,PCY,faceR,a,a+Math.PI/18);pX.closePath();pX.fillStyle=i%2?'#000':'#fff';pX.fill();}
+      pX.globalAlpha=0.055*OP;for(let r=faceR*0.08;r<faceR;r+=faceR*0.07){pX.beginPath();pX.arc(PCX,PCY,r,0,Math.PI*2);pX.strokeStyle='rgba(255,255,255,1)';pX.lineWidth=0.6;pX.stroke();}break;
     case 'sunburst':
-      pX.globalAlpha=0.10;for(let i=0;i<120;i++){const a=(i/120)*Math.PI*2;pX.beginPath();pX.moveTo(PCX,PCY);pX.lineTo(PCX+faceR*Math.cos(a),PCY+faceR*Math.sin(a));pX.strokeStyle=i%2?'rgba(255,255,255,.3)':'rgba(255,255,255,.9)';pX.lineWidth=0.8;pX.stroke();}
-      pX.globalAlpha=1;const sg=pX.createRadialGradient(PCX,PCY,0,PCX,PCY,faceR);sg.addColorStop(0,'rgba(255,255,255,.14)');sg.addColorStop(0.5,'rgba(255,255,255,.04)');sg.addColorStop(1,'rgba(0,0,0,.12)');pX.fillStyle=sg;pX.beginPath();pX.arc(PCX,PCY,faceR,0,Math.PI*2);pX.fill();break;
+      pX.globalAlpha=0.10*OP;for(let i=0;i<120;i++){const a=(i/120)*Math.PI*2;pX.beginPath();pX.moveTo(PCX,PCY);pX.lineTo(PCX+faceR*Math.cos(a),PCY+faceR*Math.sin(a));pX.strokeStyle=i%2?'rgba(255,255,255,.3)':'rgba(255,255,255,.9)';pX.lineWidth=0.8;pX.stroke();}
+      pX.globalAlpha=OP;const sg=pX.createRadialGradient(PCX,PCY,0,PCX,PCY,faceR);sg.addColorStop(0,'rgba(255,255,255,.14)');sg.addColorStop(0.5,'rgba(255,255,255,.04)');sg.addColorStop(1,'rgba(0,0,0,.12)');pX.fillStyle=sg;pX.beginPath();pX.arc(PCX,PCY,faceR,0,Math.PI*2);pX.fill();break;
     case 'fumé':
       const fg=pX.createRadialGradient(PCX,PCY,faceR*0.05,PCX,PCY,faceR);fg.addColorStop(0,'rgba(180,200,255,.18)');fg.addColorStop(0.45,'rgba(100,120,180,.06)');fg.addColorStop(1,'rgba(0,0,0,.55)');pX.fillStyle=fg;pX.beginPath();pX.arc(PCX,PCY,faceR,0,Math.PI*2);pX.fill();break;
     case 'sector':
       for(let i=0;i<8;i++){const a1=(i/8)*Math.PI*2,a2=((i+1)/8)*Math.PI*2;pX.beginPath();pX.moveTo(PCX,PCY);pX.arc(PCX,PCY,faceR,a1,a2);pX.closePath();pX.fillStyle=i%2?'rgba(0,0,0,.08)':'rgba(255,255,255,.06)';pX.fill();}
-      pX.globalAlpha=0.07;for(let y=PCY-faceR;y<PCY+faceR;y+=faceR*0.095){const dx=Math.sqrt(Math.max(0,faceR*faceR-(y-PCY)**2));pX.beginPath();pX.moveTo(PCX-dx,y);pX.lineTo(PCX+dx,y);pX.strokeStyle='rgba(200,220,255,1)';pX.lineWidth=0.8;pX.stroke();}break;
+      pX.globalAlpha=0.07*OP;for(let y=PCY-faceR;y<PCY+faceR;y+=faceR*0.095){const dx=Math.sqrt(Math.max(0,faceR*faceR-(y-PCY)**2));pX.beginPath();pX.moveTo(PCX-dx,y);pX.lineTo(PCX+dx,y);pX.strokeStyle='rgba(200,220,255,1)';pX.lineWidth=0.8;pX.stroke();}break;
     case 'grand-seiko':
-      pX.globalAlpha=0.08;for(let x=PCX-faceR;x<PCX+faceR;x+=faceR*0.025){const dy=Math.sqrt(Math.max(0,faceR*faceR-(x-PCX)**2));pX.beginPath();pX.moveTo(x,PCY-dy);pX.lineTo(x,PCY+dy);pX.strokeStyle='rgba(255,255,255,1)';pX.lineWidth=0.5;pX.stroke();}
-      pX.globalAlpha=0.05;for(let d=-faceR*2;d<faceR*2;d+=faceR*0.04){pX.beginPath();pX.moveTo(PCX-faceR,PCY+d-faceR);pX.lineTo(PCX+faceR,PCY+d+faceR);pX.strokeStyle='rgba(200,230,255,1)';pX.lineWidth=0.4;pX.stroke();}
-      pX.globalAlpha=0.15;const rng=mb32(42);for(let i=0;i<80;i++){const a=rng()*Math.PI*2,dist=rng()*faceR*0.95;pX.beginPath();pX.arc(PCX+dist*Math.cos(a),PCY+dist*Math.sin(a),rng()*1.2+0.3,0,Math.PI*2);pX.fillStyle='rgba(255,255,255,1)';pX.fill();}break;
+      pX.globalAlpha=0.08*OP;for(let x=PCX-faceR;x<PCX+faceR;x+=faceR*0.025){const dy=Math.sqrt(Math.max(0,faceR*faceR-(x-PCX)**2));pX.beginPath();pX.moveTo(x,PCY-dy);pX.lineTo(x,PCY+dy);pX.strokeStyle='rgba(255,255,255,1)';pX.lineWidth=0.5;pX.stroke();}
+      pX.globalAlpha=0.05*OP;for(let d=-faceR*2;d<faceR*2;d+=faceR*0.04){pX.beginPath();pX.moveTo(PCX-faceR,PCY+d-faceR);pX.lineTo(PCX+faceR,PCY+d+faceR);pX.strokeStyle='rgba(200,230,255,1)';pX.lineWidth=0.4;pX.stroke();}
+      pX.globalAlpha=0.15*OP;const rng=mb32(42);for(let i=0;i<80;i++){const a=rng()*Math.PI*2,dist=rng()*faceR*0.95;pX.beginPath();pX.arc(PCX+dist*Math.cos(a),PCY+dist*Math.sin(a),rng()*1.2+0.3,0,Math.PI*2);pX.fillStyle='rgba(255,255,255,1)';pX.fill();}break;
     case 'regal-oak':
-      pX.globalAlpha=0.09;const sq=faceR*0.055;
+      pX.globalAlpha=0.09*OP;const sq=faceR*0.055;
       for(let y=PCY-faceR;y<PCY+faceR;y+=sq)for(let x=PCX-faceR;x<PCX+faceR;x+=sq){if((x-PCX)**2+(y-PCY)**2>faceR*faceR)continue;const col=(Math.round((x-PCX)/sq)+Math.round((y-PCY)/sq))%2===0;pX.fillStyle=col?'rgba(255,255,255,1)':'rgba(0,0,0,1)';pX.fillRect(x,y,sq,sq);}
-      pX.globalAlpha=0.12;pX.strokeStyle='rgba(255,255,255,.4)';pX.lineWidth=0.4;
+      pX.globalAlpha=0.12*OP;pX.strokeStyle='rgba(255,255,255,.4)';pX.lineWidth=0.4;
       for(let y=PCY-faceR;y<PCY+faceR;y+=sq){const dx=Math.sqrt(Math.max(0,faceR*faceR-(y-PCY)**2));pX.beginPath();pX.moveTo(PCX-dx,y);pX.lineTo(PCX+dx,y);pX.stroke();}
       for(let x=PCX-faceR;x<PCX+faceR;x+=sq){const dy=Math.sqrt(Math.max(0,faceR*faceR-(x-PCX)**2));pX.beginPath();pX.moveTo(x,PCY-dy);pX.lineTo(x,PCY+dy);pX.stroke();}break;
     case 'nemo':
       const sh=faceR*0.072;
-      for(let y=PCY-faceR;y<PCY+faceR;y+=sh){const dx=Math.sqrt(Math.max(0,faceR*faceR-(y-PCY)**2));if(dx<2)continue;const even=Math.round((y-(PCY-faceR))/sh)%2===0;const sg3=pX.createLinearGradient(PCX-dx,y,PCX+dx,y+sh);if(even){sg3.addColorStop(0,'rgba(255,255,255,.08)');sg3.addColorStop(.5,'rgba(255,255,255,.12)');sg3.addColorStop(1,'rgba(255,255,255,.08)');}else{sg3.addColorStop(0,'rgba(0,0,0,.08)');sg3.addColorStop(.5,'rgba(0,0,0,.13)');sg3.addColorStop(1,'rgba(0,0,0,.08)');}pX.fillStyle=sg3;pX.beginPath();pX.moveTo(PCX-dx,y);pX.lineTo(PCX+dx,y);pX.lineTo(PCX+dx,y+sh);pX.lineTo(PCX-dx,y+sh);pX.closePath();pX.fill();pX.globalAlpha=0.18;pX.beginPath();pX.moveTo(PCX-dx,y);pX.lineTo(PCX+dx,y);pX.strokeStyle='rgba(255,255,255,.5)';pX.lineWidth=0.6;pX.stroke();pX.globalAlpha=1;}break;
+      for(let y=PCY-faceR;y<PCY+faceR;y+=sh){const dx=Math.sqrt(Math.max(0,faceR*faceR-(y-PCY)**2));if(dx<2)continue;const even=Math.round((y-(PCY-faceR))/sh)%2===0;const sg3=pX.createLinearGradient(PCX-dx,y,PCX+dx,y+sh);if(even){sg3.addColorStop(0,'rgba(255,255,255,.08)');sg3.addColorStop(.5,'rgba(255,255,255,.12)');sg3.addColorStop(1,'rgba(255,255,255,.08)');}else{sg3.addColorStop(0,'rgba(0,0,0,.08)');sg3.addColorStop(.5,'rgba(0,0,0,.13)');sg3.addColorStop(1,'rgba(0,0,0,.08)');}pX.globalAlpha=OP;pX.fillStyle=sg3;pX.beginPath();pX.moveTo(PCX-dx,y);pX.lineTo(PCX+dx,y);pX.lineTo(PCX+dx,y+sh);pX.lineTo(PCX-dx,y+sh);pX.closePath();pX.fill();pX.globalAlpha=0.18*OP;pX.beginPath();pX.moveTo(PCX-dx,y);pX.lineTo(PCX+dx,y);pX.strokeStyle='rgba(255,255,255,.5)';pX.lineWidth=0.6;pX.stroke();pX.globalAlpha=OP;}break;
     case 'goldeneye':
-      pX.globalAlpha=0.11;const wa=faceR*0.04,wl=faceR*0.22,bs=faceR*0.075;
+      pX.globalAlpha=0.11*OP;const wa=faceR*0.04,wl=faceR*0.22,bs=faceR*0.075;
       for(let band=0;band<faceR*2/bs+2;band++){const bY=PCY-faceR+band*bs;pX.beginPath();let first=true;for(let x=PCX-faceR-10;x<=PCX+faceR+10;x+=2){const y=bY+Math.sin((x/wl)*Math.PI*2)*wa;if(first){pX.moveTo(x,y);first=false;}else pX.lineTo(x,y);}pX.strokeStyle=band%2===0?'rgba(100,160,255,.9)':'rgba(200,230,255,.6)';pX.lineWidth=band%2===0?1.2:0.6;pX.stroke();}
       pX.globalCompositeOperation='destination-in';pX.beginPath();pX.arc(PCX,PCY,faceR,0,Math.PI*2);pX.fill();pX.globalCompositeOperation='source-over';break;
   }
@@ -382,7 +444,14 @@ function pDrawHand(angle,len,width,color,shape){
     case 'sword': pX.beginPath();pX.moveTo(len,0);pX.lineTo(len*0.3,-w/2);pX.lineTo(-tail,-w*0.15);pX.lineTo(-tail,w*0.15);pX.lineTo(len*0.3,w/2);pX.closePath();pX.fillStyle=color;pX.fill();break;
     case 'skeleton': pX.beginPath();pX.moveTo(-tail,-w/2);pX.lineTo(len,-w/2);pX.lineTo(len,w/2);pX.lineTo(-tail,w/2);pX.closePath();pX.strokeStyle=color;pX.lineWidth=1.5;pX.stroke();break;
     case 'submariner':{const lr=w,tx=len;pX.beginPath();pX.moveTo(-tail,-w*0.42);pX.lineTo(tx-lr*1.1,-w*0.42);pX.lineTo(tx-lr*1.1,w*0.42);pX.lineTo(-tail,w*0.42);pX.closePath();pX.fillStyle=color;pX.fill();[0,120,240].forEach(d=>{const r=d*Math.PI/180;pX.beginPath();pX.arc(tx+Math.cos(r)*lr,Math.sin(r)*lr,lr,0,Math.PI*2);pX.fillStyle=color;pX.fill();});pX.beginPath();pX.arc(tx,0,lr*0.44,0,Math.PI*2);pX.fillStyle='rgba(0,0,0,.75)';pX.fill();break;}
-    case 'twodoor':{const dr=w*1.4,dx=len-dr*0.9,sw=w*0.42;pX.beginPath();pX.moveTo(-tail,-sw*1.3);pX.lineTo(dx,-sw);pX.lineTo(dx,sw);pX.lineTo(-tail,sw*1.3);pX.closePath();pX.fillStyle=color;pX.fill();pX.beginPath();pX.arc(dx,0,dr,0,Math.PI*2);pX.fillStyle=color;pX.fill();pX.beginPath();pX.arc(dx,0,dr*0.38,0,Math.PI*2);pX.fillStyle='rgba(0,0,0,.65)';pX.fill();break;}
+    case 'twodoor':{ // Snowflake — see hand()'s comment in rt-clock.html
+      const shaftW=w*0.32,blockHalf=w*0.95,blockX=len*0.72,tipW=w*0.28;
+      pX.beginPath();
+      pX.moveTo(-tail,-shaftW);pX.lineTo(blockX-blockHalf,-shaftW);pX.lineTo(blockX-blockHalf,-blockHalf);pX.lineTo(blockX+blockHalf,-blockHalf);pX.lineTo(blockX+blockHalf,-shaftW);
+      pX.lineTo(len,-tipW);pX.lineTo(len,tipW);
+      pX.lineTo(blockX+blockHalf,shaftW);pX.lineTo(blockX+blockHalf,blockHalf);pX.lineTo(blockX-blockHalf,blockHalf);pX.lineTo(blockX-blockHalf,shaftW);
+      pX.closePath();pX.fillStyle=color;pX.fill();break;
+    }
   }
   pX.restore();
 }
@@ -392,11 +461,7 @@ function pDrawMin(angle,len,width,color,shape){
     pX.save();pX.translate(PCX,PCY);pX.rotate(angle);
     pX.beginPath();pX.moveTo(-tail,-width/2);pX.lineTo(len,-width/2);pX.lineTo(len,width/2);pX.lineTo(-tail,width/2);pX.closePath();pX.fillStyle=color;pX.fill();
     const hw=width*0.30;pX.beginPath();pX.rect(len*0.07,-hw,len*0.80,hw*2);pX.fillStyle='rgba(0,0,0,.72)';pX.fill();pX.restore();
-  } else if(shape==='twodoor'){
-    pX.save();pX.translate(PCX,PCY);pX.rotate(angle);
-    const sw=Math.max(2,width*0.30);
-    pX.beginPath();pX.moveTo(-tail,sw*1.5);pX.lineTo(-len*0.18,sw);pX.lineTo(len,sw);pX.lineTo(len,-sw);pX.lineTo(-len*0.18,-sw);pX.lineTo(-tail,-sw*1.5);pX.closePath();pX.fillStyle=color;pX.fill();pX.restore();
-  } else pDrawHand(angle,len,width,color,shape);
+  } else pDrawHand(angle,len,width,color,shape); // snowflake ('twodoor') and all other shapes share pDrawHand()'s geometry
 }
 function pDrawSec(angle,len,color,lollipop){
   // Tip at (+len,0), tail at (-18,0)
@@ -476,11 +541,22 @@ function renderPreview(){
     pX.beginPath();pX.moveTo(PCX,PCY);pX.arc(PCX,PCY,faceR,a1,a2,false);pX.closePath();pX.fillStyle=seg.darkColor;pX.fill();
     pX.beginPath();pX.moveTo(PCX,PCY);pX.arc(PCX,PCY,faceR*0.6,a1,a2,false);pX.closePath();pX.fillStyle=seg.lightColor;pX.fill();
     pX.save();pX.strokeStyle='#000';pX.lineWidth=1;pX.beginPath();pX.moveTo(PCX,PCY);pX.lineTo(PCX+faceR*Math.cos(a1),PCY+faceR*Math.sin(a1));pX.stroke();pX.restore();
-    if(cfg.face.showQuadrantLabels!==false){const ma=mTA(i*15+7.5),lr=faceR*0.76;pX.save();pX.translate(PCX+lr*Math.cos(ma),PCY+lr*Math.sin(ma));pX.font=`bold 12px ${cfg.global.fontFamily},sans-serif`;pX.fillStyle='rgba(255,255,255,.8)';pX.textAlign='center';pX.textBaseline='middle';pX.fillText(seg.label,0,0);pX.restore();}
+    if(cfg.face.showQuadrantLabels!==false){const ma=mTA(i*15+7.5),lr=faceR*0.76,qSz=cfg.face.quadrantLabelSize||26;pX.save();pX.translate(PCX+lr*Math.cos(ma),PCY+lr*Math.sin(ma));pX.font=`bold ${qSz}px ${cfg.global.fontFamily},sans-serif`;pX.fillStyle='rgba(255,255,255,.8)';pX.textAlign='center';pX.textBaseline='middle';pX.fillText(seg.label,0,0);pX.restore();}
   });
-  drawTex(faceR,cfg.face.texture||'none');
-  if(cfg.face.showHourNumerals){for(let h=1;h<=12;h++){const a=mTA(h*5),nr=faceR*0.86;pX.save();pX.translate(PCX+nr*Math.cos(a),PCY+nr*Math.sin(a));pX.font=`bold 11px ${cfg.global.fontFamily},sans-serif`;pX.fillStyle='rgba(255,255,255,.6)';pX.textAlign='center';pX.textBaseline='middle';pX.fillText(h,0,0);pX.restore();}}
-  const tst=cfg.face.tickStyle||'simple';if(tst!=='none'){const tr=own.length>0?own[own.length-1].ri-2:faceR;for(let m=0;m<60;m++){const a=mTA(m),maj=m%5===0;const l2=tst==='railway'?(maj?12:m%2===0?7:4):(maj?10:5);pX.beginPath();pX.moveTo(PCX+tr*Math.cos(a),PCY+tr*Math.sin(a));pX.lineTo(PCX+(tr-l2)*Math.cos(a),PCY+(tr-l2)*Math.sin(a));pX.strokeStyle=maj?'rgba(255,255,255,.5)':'rgba(255,255,255,.18)';pX.lineWidth=maj?1.5:1;pX.stroke();}}
+  drawTex(faceR,cfg.face.texture||'none',cfg.face.textureOpacity);
+  if(cfg.face.showHourNumerals){const hnSz=cfg.face.hourNumeralSize||18;for(let h=1;h<=12;h++){const a=mTA(h*5),nr=faceR*0.86;pX.save();pX.translate(PCX+nr*Math.cos(a),PCY+nr*Math.sin(a));pX.font=`bold ${hnSz}px ${cfg.global.fontFamily},sans-serif`;pX.fillStyle='rgba(255,255,255,.6)';pX.textAlign='center';pX.textBaseline='middle';pX.fillText(h,0,0);pX.restore();}}
+  const tst=cfg.face.tickStyle||'simple';
+  if(tst!=='none'){
+    const tk=cfg.face.ticks||DC.face.ticks,tr=own.length>0?own[own.length-1].ri-2:faceR;
+    for(let m=0;m<60;m++){
+      const a=mTA(m),maj=m%5===0;
+      let l2;
+      if(maj)l2=tk.majorLen;else if(tst==='railway')l2=m%2===0?tk.minorLen:tk.minorLen*0.5;else l2=tk.minorLen;
+      pX.beginPath();pX.moveTo(PCX+tr*Math.cos(a),PCY+tr*Math.sin(a));pX.lineTo(PCX+(tr-l2)*Math.cos(a),PCY+(tr-l2)*Math.sin(a));
+      pX.strokeStyle=tk.color;pX.globalAlpha=maj?tk.majorOpacity:tk.minorOpacity;pX.lineWidth=maj?tk.majorWidth:tk.minorWidth;
+      pX.stroke();pX.globalAlpha=1;
+    }
+  }
   pX.beginPath();pX.arc(PCX,PCY,14,0,Math.PI*2);pX.fillStyle='#040406';pX.fill();
 
   // hands
@@ -513,7 +589,15 @@ function drawThumb(canvas,shape,color){
     case 'sword': c.beginPath();c.moveTo(0,-len);c.lineTo(-w/2,-len*0.3);c.lineTo(-w*0.15,tail);c.lineTo(w*0.15,tail);c.lineTo(w/2,-len*0.3);c.closePath();c.fillStyle=color;c.fill();break;
     case 'skeleton': c.beginPath();c.moveTo(-w/2,tail);c.lineTo(-w/2,-len);c.lineTo(w/2,-len);c.lineTo(w/2,tail);c.closePath();c.strokeStyle=color;c.lineWidth=1.5;c.stroke();break;
     case 'submariner':{const lr=w,ty=-len;c.beginPath();c.moveTo(-w*0.42,tail);c.lineTo(-w*0.42,ty+lr*1.1);c.lineTo(w*0.42,ty+lr*1.1);c.lineTo(w*0.42,tail);c.closePath();c.fillStyle=color;c.fill();[0,120,240].forEach(d=>{const r=d*Math.PI/180;c.beginPath();c.arc(Math.sin(r)*lr,ty-Math.cos(r)*lr,lr,0,Math.PI*2);c.fillStyle=color;c.fill();});c.beginPath();c.arc(0,ty,lr*0.44,0,Math.PI*2);c.fillStyle='rgba(0,0,0,.75)';c.fill();break;}
-    case 'twodoor':{const dr=w*1.4,dy2=-len+dr*0.9,sw=w*0.42;c.beginPath();c.moveTo(-sw*1.3,tail);c.lineTo(-sw,dy2);c.lineTo(sw,dy2);c.lineTo(sw*1.3,tail);c.closePath();c.fillStyle=color;c.fill();c.beginPath();c.arc(0,dy2,dr,0,Math.PI*2);c.fillStyle=color;c.fill();c.beginPath();c.arc(0,dy2,dr*0.38,0,Math.PI*2);c.fillStyle='rgba(0,0,0,.65)';c.fill();break;}
+    case 'twodoor':{ // Snowflake — same shape as pDrawHand()'s 'twodoor', in this thumbnail's (x=width,y=length) axes
+      const shaftW=w*0.32,blockHalf=w*0.95,blockY=-len*0.72,tipW=w*0.28;
+      c.beginPath();
+      c.moveTo(-shaftW,tail);c.lineTo(-shaftW,blockY+blockHalf);c.lineTo(-blockHalf,blockY+blockHalf);c.lineTo(-blockHalf,blockY-blockHalf);c.lineTo(-shaftW,blockY-blockHalf);
+      c.lineTo(-tipW,-len);c.lineTo(tipW,-len);
+      c.lineTo(shaftW,blockY-blockHalf);c.lineTo(blockHalf,blockY-blockHalf);c.lineTo(blockHalf,blockY+blockHalf);c.lineTo(shaftW,blockY+blockHalf);
+      c.lineTo(shaftW,tail);
+      c.closePath();c.fillStyle=color;c.fill();break;
+    }
   }
   c.restore();
 }
@@ -573,6 +657,8 @@ function buildFace(){
   const f=cfg.face;
   const ftg=document.getElementById('faceTexGrid');ftg.innerHTML='';
   TEXTURES.forEach(ft=>{const d=document.createElement('div');d.className='fto'+(f.texture===ft.id?' sel':'');const cv=document.createElement('canvas');cv.width=52;cv.height=40;drawFaceThumb(cv,ft.id);d.appendChild(cv);const lbl=document.createElement('span');lbl.className='ftol';lbl.textContent=ft.l;d.appendChild(lbl);d.onclick=()=>{cfg.face.texture=ft.id;ftg.querySelectorAll('.fto').forEach(e=>e.classList.remove('sel'));d.classList.add('sel');mu();rp();};ftg.appendChild(d);});
+  const texOp=f.textureOpacity!=null?f.textureOpacity:1;
+  document.getElementById('f_texOp').value=texOp;document.getElementById('f_texOpV').textContent=Math.round(texOp*100)+'%';
   const sg=document.getElementById('segGrid');sg.innerHTML='';
   const names=['00–15','15–30','30–45','45–00'];
   (f.segments||DC.face.segments).forEach((seg,i)=>{
@@ -584,8 +670,30 @@ function buildFace(){
     sg.appendChild(d);
   });
   document.getElementById('f_tick').value=f.tickStyle||'simple';
+  const tk=f.ticks||DC.face.ticks;
+  sCP('tk_col','tk_colT',tk.color);
+  sRR('tk_majLen','tk_majLenV',tk.majorLen);sRR('tk_minLen','tk_minLenV',tk.minorLen);
+  sRR('tk_majW','tk_majWV',tk.majorWidth);sRR('tk_minW','tk_minWV',tk.minorWidth);
+  sRR('tk_majOp','tk_majOpV',tk.majorOpacity);sRR('tk_minOp','tk_minOpV',tk.minorOpacity);
+  sRR('f_qSz','f_qSzV',f.quadrantLabelSize||26);
+  sRR('f_hnSz','f_hnSzV',f.hourNumeralSize||18);
   document.getElementById('f_nums').checked=!!f.showHourNumerals;
   document.getElementById('f_lbls').checked=f.showQuadrantLabels!==false;
+}
+function applyTexOp(){
+  const v=+document.getElementById('f_texOp').value;
+  cfg.face.textureOpacity=v;
+  document.getElementById('f_texOpV').textContent=Math.round(v*100)+'%';
+  mu();rp();
+}
+function applyTicks(){
+  if(!cfg.face.ticks)cfg.face.ticks={};
+  const t=cfg.face.ticks;
+  t.color=document.getElementById('tk_col').value;
+  t.majorLen=+document.getElementById('tk_majLen').value;t.minorLen=+document.getElementById('tk_minLen').value;
+  t.majorWidth=+document.getElementById('tk_majW').value;t.minorWidth=+document.getElementById('tk_minW').value;
+  t.majorOpacity=+document.getElementById('tk_majOp').value;t.minorOpacity=+document.getElementById('tk_minOp').value;
+  mu();rp();
 }
 
 function buildT0(){
@@ -669,7 +777,7 @@ function makeRingCard(idx){
       <div class="tw"><label class="tog"><input type="checkbox" ${ls.inherit!==false?'checked':''} onchange="cfg.rings[${idx}].labelStyle.inherit=this.checked;document.getElementById('lso-${idx}').style.display=this.checked?'none':'flex';mu();rp()"><div class="tog-t"></div><div class="tog-k"></div></label><span class="tl">Inherit global label style</span></div>
       <div id="lso-${idx}" style="display:${ls.inherit!==false?'none':'flex'};flex-direction:column;gap:7px">
         <div class="two">
-          <div><label class="fl">Font Size</label><div class="rr" style="margin-top:3px"><input type="range" min="8" max="22" value="${ls.fontSize||12}" oninput="cfg.rings[${idx}].labelStyle.fontSize=+this.value;document.getElementById('lsz-${idx}').textContent=this.value;mu();rp()"><span class="rv" id="lsz-${idx}">${ls.fontSize||12}</span></div></div>
+          <div><label class="fl">Font Size</label><div class="rr" style="margin-top:3px"><input type="range" min="8" max="48" value="${ls.fontSize||12}" oninput="cfg.rings[${idx}].labelStyle.fontSize=+this.value;document.getElementById('lsz-${idx}').textContent=this.value;mu();rp()"><span class="rv" id="lsz-${idx}">${ls.fontSize||12}</span></div></div>
           <div><label class="fl">Color</label><div class="cr" style="margin-top:3px"><input type="color" value="${ls.color||'rgba(200,220,255,0.75)'}" onchange="cfg.rings[${idx}].labelStyle.color=this.value;mu();rp()"></div></div>
         </div>
         <div class="tw"><label class="tog"><input type="checkbox" ${ls.curved?'checked':''} onchange="cfg.rings[${idx}].labelStyle.curved=this.checked;mu();rp()"><div class="tog-t"></div><div class="tog-k"></div></label><span class="tl">Curved text</span></div>
@@ -754,8 +862,19 @@ function rrS(rid,vid){const v=document.getElementById(rid).value;const e=documen
 function fmtW(s,e){if(s===0&&e===60)return 'full ring';return`xx:${pad(s%60)} – xx:${pad(e%60)}`;}
 function mu(){const e=document.getElementById('saveStatus');e.textContent='Unsaved changes';e.className='ss unsaved';}
 function rp(){renderPreview();}
-function saveCfg(){localStorage.setItem('rtClockConfig',JSON.stringify(cfg));const e=document.getElementById('saveStatus');e.textContent='Saved ✓';e.className='ss saved';}
-function saveAndLaunch(){saveCfg();window.open('rt-clock.html','_blank');}
+function saveCfg(closeAfter){
+  localStorage.setItem('rtClockConfig',JSON.stringify(cfg));
+  const e=document.getElementById('saveStatus');e.textContent='Saved ✓';e.className='ss saved';
+  pushToParent(!!closeAfter); // no-op when standalone; live-applies to the clock behind this overlay otherwise
+}
+function saveAndLaunch(){
+  saveCfg(IN_FRAME); // in-frame: apply live + close the overlay; standalone: just persist below
+  if(!IN_FRAME)window.open('rt-clock.html','_blank');
+}
+function openClockOrClose(){
+  if(IN_FRAME)closeParentOnly(); // there's already a clock behind this overlay — just dismiss it
+  else window.open('rt-clock.html','_blank');
+}
 function exportCfg(){const b=new Blob([JSON.stringify(cfg,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='rt-clock-config.json';a.click();}
 function resetToDefaults(){if(!confirm('Reset all settings to defaults?'))return;cfg=dc();buildAll();mu();rp();}
 

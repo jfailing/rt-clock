@@ -37,6 +37,15 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;display:flex;al
 .btn.cfg:hover{border-color:#66AAFF;color:#66AAFF}
 .pi-row{font-size:.65rem;letter-spacing:.06em;color:#252525;display:flex;align-items:center;gap:5px}
 .pi-dot{width:5px;height:5px;border-radius:50%;background:#252525}
+
+/* Config overlay — hosts rt-clock-config.html in an <iframe> so the editor
+   opens inside this window instead of a separate browser tab. */
+.cfg-modal{position:fixed;inset:0;background:rgba(0,0,0,.72);display:none;align-items:center;justify-content:center;z-index:1000}
+.cfg-modal.open{display:flex}
+.cfg-box{position:relative;width:94vw;height:92vh;max-width:1400px;background:#07080F;border:1px solid #252840;border-radius:4px;box-shadow:0 20px 60px rgba(0,0,0,.6);overflow:hidden}
+.cfg-box iframe{width:100%;height:100%;border:0;display:block}
+.cfg-close{position:absolute;top:8px;right:10px;width:28px;height:28px;border:2px solid #444;background:#0A0A0A;color:#bbb;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:1rem;line-height:1;cursor:pointer;z-index:1001;transition:border-color .2s,color .2s}
+.cfg-close:hover{border-color:#FFB800;color:#FFB800}
 </style>
 </head>
 <body>
@@ -56,9 +65,19 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;display:flex;al
     </div>
     <div class="btn-row">
       <button class="btn snooze" id="btnSnooze" onclick="snoozeAlarm()">Snooze Alarm</button>
-      <button class="btn cfg" onclick="window.open('rt-clock-config.html','_blank')">&#9881; Config</button>
+      <button class="btn cfg" onclick="openConfig()">&#9881; Config</button>
     </div>
     <div class="pi-row"><div class="pi-dot"></div><span>PI Web API: Mock Mode</span></div>
+  </div>
+</div>
+
+<!-- Config overlay: rt-clock-config.html loads into this iframe on first
+     open and stays alive (just hidden) after that, so in-progress edits
+     survive closing/reopening the panel within the same clock session. -->
+<div class="cfg-modal" id="cfgModal">
+  <div class="cfg-box">
+    <button class="cfg-close" id="cfgCloseBtn" title="Close (Esc)">&#10005;</button>
+    <iframe id="cfgFrame" title="RT Clock Configuration"></iframe>
   </div>
 </div>
 <script>
@@ -74,7 +93,11 @@ const DC = {
     secondHandColor:'#FFB800', handShape:'baton', secondStyle:'quartz',
   },
   face:{
-    texture:'none',
+    texture:'none', textureOpacity:1,
+    quadrantLabelSize:26, hourNumeralSize:18,
+    // Base tick color is stored as hex; major/minor opacity are applied at draw
+    // time via ctx.globalAlpha so the same color can be reused at two strengths.
+    ticks:{color:'#FFFFFF',majorLen:15,minorLen:7,majorWidth:2,minorWidth:1,majorOpacity:0.55,minorOpacity:0.20},
     segments:[
       {label:'00', darkColor:'#1E3A18', lightColor:'#2E5424'},
       {label:'15', darkColor:'#28164A', lightColor:'#3E246C'},
@@ -111,6 +134,51 @@ const DC = {
 
 let cfg = JSON.parse(JSON.stringify(DC));
 try{ const r=localStorage.getItem('rtClockConfig'); if(r) cfg=JSON.parse(r); }catch(e){}
+
+// ═══════════════════════════════════════════════
+//  CONFIG MODAL (in-page iframe)
+//  Previously "Config" did window.open() to a second tab, and Save there
+//  did another window.open() to a THIRD (refreshed) clock tab — this
+//  document had no way to hear that settings changed. Now the editor
+//  lives in an iframe overlay and talks back via postMessage, so the
+//  whole open→edit→save flow stays in this one tab.
+// ═══════════════════════════════════════════════
+const cfgFrame=document.getElementById('cfgFrame');
+const cfgModal=document.getElementById('cfgModal');
+
+function openConfig(){
+  // Lazy-load: fetch rt-clock-config.html only the first time it's opened,
+  // then leave the iframe running (just hidden) so unsaved edits aren't
+  // wiped out by closing the panel to glance at the clock.
+  if(!cfgFrame.src) cfgFrame.src='rt-clock-config.html';
+  cfgModal.classList.add('open');
+}
+function closeConfig(){ cfgModal.classList.remove('open'); }
+
+document.getElementById('cfgCloseBtn').addEventListener('click', closeConfig);
+cfgModal.addEventListener('click', e=>{ if(e.target===cfgModal) closeConfig(); }); // backdrop click
+document.addEventListener('keydown', e=>{ if(e.key==='Escape' && cfgModal.classList.contains('open')) closeConfig(); });
+
+// The config iframe posts back:
+//   {type:'rtclock-config-update', cfg, close} — on every Save (close:false)
+//     and on "Save & Close" (close:true)
+//   {type:'rtclock-config-close'} — user backed out without saving
+// event.source is checked against our own iframe's window so a message
+// from an unrelated tab/frame can't be mistaken for a real config update.
+// targetOrigin '*' is used on the sending side because this app is also
+// meant to run from file:// (no real origin) per the README's Quick Start.
+window.addEventListener('message', e=>{
+  if(e.source!==cfgFrame.contentWindow) return;
+  const msg=e.data;
+  if(!msg||typeof msg!=='object') return;
+  if(msg.type==='rtclock-config-update'&&msg.cfg){
+    cfg=msg.cfg;      // swap the live config — draw loop re-reads `cfg` every frame, no reload needed
+    applyStyles();    // re-apply the one-time styles the per-frame draw loop doesn't touch (bg/digital color)
+    if(msg.close) closeConfig();
+  }else if(msg.type==='rtclock-config-close'){
+    closeConfig();
+  }
+});
 
 // ═══════════════════════════════════════════════
 //  DPR-AWARE CANVAS
@@ -233,18 +301,27 @@ function drawT0(ro,ri,color,hw,shape,lr){
 // ═══════════════════════════════════════════════
 function mb32(s){let a=s;return()=>{a|=0;a=(a+0x6D2B79F5)|0;let t=Math.imul(a^(a>>>15),1|a);t=(t+Math.imul(t^(t>>>7),61|t))^t;return((t^(t>>>14))>>>0)/4294967296;};}
 
-function drawTexture(faceR,texId){
+function drawTexture(faceR,texId,opacity){
   if(!texId||texId==='none')return;
+  // Every alpha value below is multiplied by OP so the "Texture Intensity"
+  // slider dims the whole pattern uniformly without touching each effect's
+  // relative internal shading. Defaults to fully opaque (OP=1) if unset.
+  const OP=opacity==null?1:opacity;
   ctx.save();
+  ctx.globalAlpha=OP; // baseline for cases (fumé, sector's first pass) that don't set their own alpha
   switch(texId){
-    case 'guilloché': ctx.globalAlpha=0.045;for(let i=0;i<36;i++){const a=i*Math.PI/18;ctx.beginPath();ctx.moveTo(CX,CY);ctx.arc(CX,CY,faceR,a,a+Math.PI/18);ctx.closePath();ctx.fillStyle=i%2?'#000':'#fff';ctx.fill();}ctx.globalAlpha=0.055;for(let r=faceR*.08;r<faceR;r+=faceR*.07){ctx.beginPath();ctx.arc(CX,CY,r,0,Math.PI*2);ctx.strokeStyle='rgba(255,255,255,1)';ctx.lineWidth=0.6;ctx.stroke();}break;
-    case 'sunburst': ctx.globalAlpha=.10;for(let i=0;i<120;i++){const a=(i/120)*Math.PI*2;ctx.beginPath();ctx.moveTo(CX,CY);ctx.lineTo(CX+faceR*Math.cos(a),CY+faceR*Math.sin(a));ctx.strokeStyle=i%2?'rgba(255,255,255,.3)':'rgba(255,255,255,.9)';ctx.lineWidth=.8;ctx.stroke();}ctx.globalAlpha=1;{const sg=ctx.createRadialGradient(CX,CY,0,CX,CY,faceR);sg.addColorStop(0,'rgba(255,255,255,.14)');sg.addColorStop(.5,'rgba(255,255,255,.04)');sg.addColorStop(1,'rgba(0,0,0,.12)');ctx.fillStyle=sg;ctx.beginPath();ctx.arc(CX,CY,faceR,0,Math.PI*2);ctx.fill();}break;
+    case 'guilloché': ctx.globalAlpha=0.045*OP;for(let i=0;i<36;i++){const a=i*Math.PI/18;ctx.beginPath();ctx.moveTo(CX,CY);ctx.arc(CX,CY,faceR,a,a+Math.PI/18);ctx.closePath();ctx.fillStyle=i%2?'#000':'#fff';ctx.fill();}ctx.globalAlpha=0.055*OP;for(let r=faceR*.08;r<faceR;r+=faceR*.07){ctx.beginPath();ctx.arc(CX,CY,r,0,Math.PI*2);ctx.strokeStyle='rgba(255,255,255,1)';ctx.lineWidth=0.6;ctx.stroke();}break;
+    case 'sunburst': ctx.globalAlpha=.10*OP;for(let i=0;i<120;i++){const a=(i/120)*Math.PI*2;ctx.beginPath();ctx.moveTo(CX,CY);ctx.lineTo(CX+faceR*Math.cos(a),CY+faceR*Math.sin(a));ctx.strokeStyle=i%2?'rgba(255,255,255,.3)':'rgba(255,255,255,.9)';ctx.lineWidth=.8;ctx.stroke();}ctx.globalAlpha=OP;{const sg=ctx.createRadialGradient(CX,CY,0,CX,CY,faceR);sg.addColorStop(0,'rgba(255,255,255,.14)');sg.addColorStop(.5,'rgba(255,255,255,.04)');sg.addColorStop(1,'rgba(0,0,0,.12)');ctx.fillStyle=sg;ctx.beginPath();ctx.arc(CX,CY,faceR,0,Math.PI*2);ctx.fill();}break;
     case 'fumé': {const fg=ctx.createRadialGradient(CX,CY,faceR*.05,CX,CY,faceR);fg.addColorStop(0,'rgba(180,200,255,.18)');fg.addColorStop(.45,'rgba(100,120,180,.06)');fg.addColorStop(1,'rgba(0,0,0,.55)');ctx.fillStyle=fg;ctx.beginPath();ctx.arc(CX,CY,faceR,0,Math.PI*2);ctx.fill();}break;
-    case 'sector': for(let i=0;i<8;i++){const a1=(i/8)*Math.PI*2,a2=((i+1)/8)*Math.PI*2;ctx.beginPath();ctx.moveTo(CX,CY);ctx.arc(CX,CY,faceR,a1,a2);ctx.closePath();ctx.fillStyle=i%2?'rgba(0,0,0,.08)':'rgba(255,255,255,.06)';ctx.fill();}ctx.globalAlpha=.07;for(let y=CY-faceR;y<CY+faceR;y+=faceR*.095){const dx=Math.sqrt(Math.max(0,faceR*faceR-(y-CY)**2));ctx.beginPath();ctx.moveTo(CX-dx,y);ctx.lineTo(CX+dx,y);ctx.strokeStyle='rgba(200,220,255,1)';ctx.lineWidth=.8;ctx.stroke();}break;
-    case 'grand-seiko': ctx.globalAlpha=.08;for(let x=CX-faceR;x<CX+faceR;x+=faceR*.025){const dy=Math.sqrt(Math.max(0,faceR*faceR-(x-CX)**2));ctx.beginPath();ctx.moveTo(x,CY-dy);ctx.lineTo(x,CY+dy);ctx.strokeStyle='rgba(255,255,255,1)';ctx.lineWidth=.5;ctx.stroke();}ctx.globalAlpha=.05;for(let d=-faceR*2;d<faceR*2;d+=faceR*.04){ctx.beginPath();ctx.moveTo(CX-faceR,CY+d-faceR);ctx.lineTo(CX+faceR,CY+d+faceR);ctx.strokeStyle='rgba(200,230,255,1)';ctx.lineWidth=.4;ctx.stroke();}ctx.globalAlpha=.15;{const rng=mb32(42);for(let i=0;i<80;i++){const a=rng()*Math.PI*2,dist=rng()*faceR*.95;ctx.beginPath();ctx.arc(CX+dist*Math.cos(a),CY+dist*Math.sin(a),rng()*1.2+.3,0,Math.PI*2);ctx.fillStyle='rgba(255,255,255,1)';ctx.fill();}}break;
-    case 'regal-oak': {ctx.globalAlpha=.09;const sq=faceR*.055;for(let y=CY-faceR;y<CY+faceR;y+=sq)for(let x=CX-faceR;x<CX+faceR;x+=sq){if((x-CX)**2+(y-CY)**2>faceR*faceR)continue;ctx.fillStyle=(Math.round((x-CX)/sq)+Math.round((y-CY)/sq))%2===0?'rgba(255,255,255,1)':'rgba(0,0,0,1)';ctx.fillRect(x,y,sq,sq);}ctx.globalAlpha=.12;ctx.strokeStyle='rgba(255,255,255,.4)';ctx.lineWidth=.4;for(let y=CY-faceR;y<CY+faceR;y+=sq){const dx=Math.sqrt(Math.max(0,faceR*faceR-(y-CY)**2));ctx.beginPath();ctx.moveTo(CX-dx,y);ctx.lineTo(CX+dx,y);ctx.stroke();}for(let x=CX-faceR;x<CX+faceR;x+=sq){const dy=Math.sqrt(Math.max(0,faceR*faceR-(x-CX)**2));ctx.beginPath();ctx.moveTo(x,CY-dy);ctx.lineTo(x,CY+dy);ctx.stroke();}}break;
-    case 'nemo': {const sh=faceR*.072;for(let y=CY-faceR;y<CY+faceR;y+=sh){const dx=Math.sqrt(Math.max(0,faceR*faceR-(y-CY)**2));if(dx<2)continue;const even=Math.round((y-(CY-faceR))/sh)%2===0;const sg3=ctx.createLinearGradient(CX-dx,y,CX+dx,y+sh);if(even){sg3.addColorStop(0,'rgba(255,255,255,.08)');sg3.addColorStop(.5,'rgba(255,255,255,.12)');sg3.addColorStop(1,'rgba(255,255,255,.08)');}else{sg3.addColorStop(0,'rgba(0,0,0,.08)');sg3.addColorStop(.5,'rgba(0,0,0,.13)');sg3.addColorStop(1,'rgba(0,0,0,.08)');}ctx.fillStyle=sg3;ctx.beginPath();ctx.moveTo(CX-dx,y);ctx.lineTo(CX+dx,y);ctx.lineTo(CX+dx,y+sh);ctx.lineTo(CX-dx,y+sh);ctx.closePath();ctx.fill();ctx.globalAlpha=.18;ctx.beginPath();ctx.moveTo(CX-dx,y);ctx.lineTo(CX+dx,y);ctx.strokeStyle='rgba(255,255,255,.5)';ctx.lineWidth=.6;ctx.stroke();ctx.globalAlpha=1;}}break;
-    case 'goldeneye': {ctx.globalAlpha=.11;const wa=faceR*.04,wl=faceR*.22,bs=faceR*.075;for(let band=0;band<faceR*2/bs+2;band++){const bY=CY-faceR+band*bs;ctx.beginPath();let fi=true;for(let x=CX-faceR-10;x<=CX+faceR+10;x+=2){const y=bY+Math.sin((x/wl)*Math.PI*2)*wa;if(fi){ctx.moveTo(x,y);fi=false;}else ctx.lineTo(x,y);}ctx.strokeStyle=band%2===0?'rgba(100,160,255,.9)':'rgba(200,230,255,.6)';ctx.lineWidth=band%2===0?1.2:.6;ctx.stroke();}ctx.globalCompositeOperation='destination-in';ctx.beginPath();ctx.arc(CX,CY,faceR,0,Math.PI*2);ctx.fill();ctx.globalCompositeOperation='source-over';}break;
+    case 'sector': for(let i=0;i<8;i++){const a1=(i/8)*Math.PI*2,a2=((i+1)/8)*Math.PI*2;ctx.beginPath();ctx.moveTo(CX,CY);ctx.arc(CX,CY,faceR,a1,a2);ctx.closePath();ctx.fillStyle=i%2?'rgba(0,0,0,.08)':'rgba(255,255,255,.06)';ctx.fill();}ctx.globalAlpha=.07*OP;for(let y=CY-faceR;y<CY+faceR;y+=faceR*.095){const dx=Math.sqrt(Math.max(0,faceR*faceR-(y-CY)**2));ctx.beginPath();ctx.moveTo(CX-dx,y);ctx.lineTo(CX+dx,y);ctx.strokeStyle='rgba(200,220,255,1)';ctx.lineWidth=.8;ctx.stroke();}break;
+    case 'grand-seiko': ctx.globalAlpha=.08*OP;for(let x=CX-faceR;x<CX+faceR;x+=faceR*.025){const dy=Math.sqrt(Math.max(0,faceR*faceR-(x-CX)**2));ctx.beginPath();ctx.moveTo(x,CY-dy);ctx.lineTo(x,CY+dy);ctx.strokeStyle='rgba(255,255,255,1)';ctx.lineWidth=.5;ctx.stroke();}ctx.globalAlpha=.05*OP;for(let d=-faceR*2;d<faceR*2;d+=faceR*.04){ctx.beginPath();ctx.moveTo(CX-faceR,CY+d-faceR);ctx.lineTo(CX+faceR,CY+d+faceR);ctx.strokeStyle='rgba(200,230,255,1)';ctx.lineWidth=.4;ctx.stroke();}ctx.globalAlpha=.15*OP;{const rng=mb32(42);for(let i=0;i<80;i++){const a=rng()*Math.PI*2,dist=rng()*faceR*.95;ctx.beginPath();ctx.arc(CX+dist*Math.cos(a),CY+dist*Math.sin(a),rng()*1.2+.3,0,Math.PI*2);ctx.fillStyle='rgba(255,255,255,1)';ctx.fill();}}break;
+    case 'regal-oak': {ctx.globalAlpha=.09*OP;const sq=faceR*.055;for(let y=CY-faceR;y<CY+faceR;y+=sq)for(let x=CX-faceR;x<CX+faceR;x+=sq){if((x-CX)**2+(y-CY)**2>faceR*faceR)continue;ctx.fillStyle=(Math.round((x-CX)/sq)+Math.round((y-CY)/sq))%2===0?'rgba(255,255,255,1)':'rgba(0,0,0,1)';ctx.fillRect(x,y,sq,sq);}ctx.globalAlpha=.12*OP;ctx.strokeStyle='rgba(255,255,255,.4)';ctx.lineWidth=.4;for(let y=CY-faceR;y<CY+faceR;y+=sq){const dx=Math.sqrt(Math.max(0,faceR*faceR-(y-CY)**2));ctx.beginPath();ctx.moveTo(CX-dx,y);ctx.lineTo(CX+dx,y);ctx.stroke();}for(let x=CX-faceR;x<CX+faceR;x+=sq){const dy=Math.sqrt(Math.max(0,faceR*faceR-(x-CX)**2));ctx.beginPath();ctx.moveTo(x,CY-dy);ctx.lineTo(x,CY+dy);ctx.stroke();}}break;
+    // nemo resets globalAlpha to a plain 1 at the end of every band iteration
+    // (needed so the next band's fill isn't left at the highlight stroke's
+    // alpha) — that reset target becomes OP instead of 1 so every band stays
+    // scaled, not just the first.
+    case 'nemo': {const sh=faceR*.072;for(let y=CY-faceR;y<CY+faceR;y+=sh){const dx=Math.sqrt(Math.max(0,faceR*faceR-(y-CY)**2));if(dx<2)continue;const even=Math.round((y-(CY-faceR))/sh)%2===0;const sg3=ctx.createLinearGradient(CX-dx,y,CX+dx,y+sh);if(even){sg3.addColorStop(0,'rgba(255,255,255,.08)');sg3.addColorStop(.5,'rgba(255,255,255,.12)');sg3.addColorStop(1,'rgba(255,255,255,.08)');}else{sg3.addColorStop(0,'rgba(0,0,0,.08)');sg3.addColorStop(.5,'rgba(0,0,0,.13)');sg3.addColorStop(1,'rgba(0,0,0,.08)');}ctx.globalAlpha=OP;ctx.fillStyle=sg3;ctx.beginPath();ctx.moveTo(CX-dx,y);ctx.lineTo(CX+dx,y);ctx.lineTo(CX+dx,y+sh);ctx.lineTo(CX-dx,y+sh);ctx.closePath();ctx.fill();ctx.globalAlpha=.18*OP;ctx.beginPath();ctx.moveTo(CX-dx,y);ctx.lineTo(CX+dx,y);ctx.strokeStyle='rgba(255,255,255,.5)';ctx.lineWidth=.6;ctx.stroke();ctx.globalAlpha=OP;}}break;
+    case 'goldeneye': {ctx.globalAlpha=.11*OP;const wa=faceR*.04,wl=faceR*.22,bs=faceR*.075;for(let band=0;band<faceR*2/bs+2;band++){const bY=CY-faceR+band*bs;ctx.beginPath();let fi=true;for(let x=CX-faceR-10;x<=CX+faceR+10;x+=2){const y=bY+Math.sin((x/wl)*Math.PI*2)*wa;if(fi){ctx.moveTo(x,y);fi=false;}else ctx.lineTo(x,y);}ctx.strokeStyle=band%2===0?'rgba(100,160,255,.9)':'rgba(200,230,255,.6)';ctx.lineWidth=band%2===0?1.2:.6;ctx.stroke();}ctx.globalCompositeOperation='destination-in';ctx.beginPath();ctx.arc(CX,CY,faceR,0,Math.PI*2);ctx.fill();ctx.globalCompositeOperation='source-over';}break;
   }
   ctx.restore();
 }
@@ -262,22 +339,35 @@ function drawFace(faceR){
     ctx.save();ctx.strokeStyle='#000';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(CX,CY);ctx.lineTo(CX+faceR*Math.cos(a1),CY+faceR*Math.sin(a1));ctx.stroke();ctx.restore();
     if(showLbls&&seg.label){
       // Centred within quadrant (angular + radial midpoint)
-      const midA=(a1+a2)/2, lr=faceR*.72;
+      const midA=(a1+a2)/2, lr=faceR*.72, qSz=cfg.face.quadrantLabelSize||26;
       ctx.save();ctx.translate(CX+lr*Math.cos(midA),CY+lr*Math.sin(midA));
-      ctx.font="bold 26px 'Kalinga','Trebuchet MS',sans-serif";ctx.fillStyle='rgba(255,255,255,.7)';ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.font=`bold ${qSz}px 'Kalinga','Trebuchet MS',sans-serif`;ctx.fillStyle='rgba(255,255,255,.7)';ctx.textAlign='center';ctx.textBaseline='middle';
       ctx.fillText(seg.label,0,0);ctx.restore();
     }
   });
-  drawTexture(faceR,cfg.face.texture||'none');
+  drawTexture(faceR,cfg.face.texture||'none',cfg.face.textureOpacity);
   if(cfg.face.showHourNumerals){
-    for(let h=1;h<=12;h++){const a=mTA(h*5),nr=faceR*.86;ctx.save();ctx.translate(CX+nr*Math.cos(a),CY+nr*Math.sin(a));ctx.font="bold 18px 'Kalinga','Trebuchet MS',sans-serif";ctx.fillStyle='rgba(255,255,255,.6)';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(h,0,0);ctx.restore();}
+    const hnSz=cfg.face.hourNumeralSize||18;
+    for(let h=1;h<=12;h++){const a=mTA(h*5),nr=faceR*.86;ctx.save();ctx.translate(CX+nr*Math.cos(a),CY+nr*Math.sin(a));ctx.font=`bold ${hnSz}px 'Kalinga','Trebuchet MS',sans-serif`;ctx.fillStyle='rgba(255,255,255,.6)';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(h,0,0);ctx.restore();}
   }
 }
 
 function drawTicks(innerR){
   const style=cfg.face.tickStyle||'simple';if(style==='none')return;
+  const t=cfg.face.ticks||DC.face.ticks;
   const ro=innerR-2;
-  for(let m=0;m<60;m++){const a=mTA(m),maj=m%5===0;const len=style==='railway'?(maj?18:m%2===0?10:5):(maj?15:7);ctx.beginPath();ctx.moveTo(CX+ro*Math.cos(a),CY+ro*Math.sin(a));ctx.lineTo(CX+(ro-len)*Math.cos(a),CY+(ro-len)*Math.sin(a));ctx.strokeStyle=maj?'rgba(255,255,255,.55)':'rgba(255,255,255,.20)';ctx.lineWidth=maj?2:1;ctx.stroke();}
+  for(let m=0;m<60;m++){
+    const a=mTA(m),maj=m%5===0;
+    let len;
+    if(maj)len=t.majorLen;
+    // "railway" alternates minor-tick length by parity for the classic
+    // fine/coarse watchmaking look; "simple" uses one minor length throughout.
+    else if(style==='railway')len=m%2===0?t.minorLen:t.minorLen*0.5;
+    else len=t.minorLen;
+    ctx.beginPath();ctx.moveTo(CX+ro*Math.cos(a),CY+ro*Math.sin(a));ctx.lineTo(CX+(ro-len)*Math.cos(a),CY+(ro-len)*Math.sin(a));
+    ctx.strokeStyle=t.color;ctx.globalAlpha=maj?t.majorOpacity:t.minorOpacity;ctx.lineWidth=maj?t.majorWidth:t.minorWidth;
+    ctx.stroke();ctx.globalAlpha=1;
+  }
 }
 
 // ═══════════════════════════════════════════════
@@ -334,7 +424,25 @@ function hand(angle,len,width,color,shape){
     case 'sword':    ctx.beginPath();ctx.moveTo(len,0);ctx.lineTo(len*.3,-width/2);ctx.lineTo(-tail,-width*.15);ctx.lineTo(-tail,width*.15);ctx.lineTo(len*.3,width/2);ctx.closePath();ctx.fillStyle=color;ctx.fill();break;
     case 'skeleton': ctx.beginPath();ctx.moveTo(-tail,-width/2);ctx.lineTo(len,-width/2);ctx.lineTo(len,width/2);ctx.lineTo(-tail,width/2);ctx.closePath();ctx.strokeStyle=color;ctx.lineWidth=2.5;ctx.stroke();break;
     case 'submariner':{const lr=width,tx=len;ctx.beginPath();ctx.moveTo(-tail,-width*.42);ctx.lineTo(tx-lr*1.1,-width*.42);ctx.lineTo(tx-lr*1.1,width*.42);ctx.lineTo(-tail,width*.42);ctx.closePath();ctx.fillStyle=color;ctx.fill();[0,120,240].forEach(d=>{const r=d*Math.PI/180;ctx.beginPath();ctx.arc(tx+Math.cos(r)*lr,Math.sin(r)*lr,lr,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();});ctx.beginPath();ctx.arc(tx,0,lr*.44,0,Math.PI*2);ctx.fillStyle='rgba(0,0,0,.75)';ctx.fill();break;}
-    case 'twodoor':  {const dr=width*1.4,dx=len-dr*.9,sw=width*.42;ctx.beginPath();ctx.moveTo(-tail,-sw*1.3);ctx.lineTo(dx,-sw);ctx.lineTo(dx,sw);ctx.lineTo(-tail,sw*1.3);ctx.closePath();ctx.fillStyle=color;ctx.fill();ctx.beginPath();ctx.arc(dx,0,dr,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();ctx.beginPath();ctx.arc(dx,0,dr*.38,0,Math.PI*2);ctx.fillStyle='rgba(0,0,0,.65)';ctx.fill();break;}
+    // "Snowflake" — Tudor Black Bay-style hand: a slim baton with a wide
+    // square paddle set back from the tip, then a short taper to the point.
+    case 'twodoor': {
+      const shaftW=width*.32, blockHalf=width*.95, blockX=len*.72, tipW=width*.28;
+      ctx.beginPath();
+      ctx.moveTo(-tail,-shaftW);
+      ctx.lineTo(blockX-blockHalf,-shaftW);
+      ctx.lineTo(blockX-blockHalf,-blockHalf);
+      ctx.lineTo(blockX+blockHalf,-blockHalf);
+      ctx.lineTo(blockX+blockHalf,-shaftW);
+      ctx.lineTo(len,-tipW);
+      ctx.lineTo(len,tipW);
+      ctx.lineTo(blockX+blockHalf,shaftW);
+      ctx.lineTo(blockX+blockHalf,blockHalf);
+      ctx.lineTo(blockX-blockHalf,blockHalf);
+      ctx.lineTo(blockX-blockHalf,shaftW);
+      ctx.closePath();ctx.fillStyle=color;ctx.fill();
+      break;
+    }
   }
   ctx.restore();
 }
@@ -345,11 +453,7 @@ function minHand(angle,len,width,color,shape){
     ctx.save();ctx.translate(CX,CY);ctx.rotate(angle);ctx.shadowColor='rgba(0,0,0,.7)';ctx.shadowBlur=8;
     ctx.beginPath();ctx.moveTo(-tail,-width/2);ctx.lineTo(len,-width/2);ctx.lineTo(len,width/2);ctx.lineTo(-tail,width/2);ctx.closePath();ctx.fillStyle=color;ctx.fill();
     const hw=width*.30;ctx.beginPath();ctx.rect(len*.07,-hw,len*.80,hw*2);ctx.fillStyle='rgba(0,0,0,.72)';ctx.fill();ctx.restore();
-  }else if(shape==='twodoor'){
-    ctx.save();ctx.translate(CX,CY);ctx.rotate(angle);ctx.shadowColor='rgba(0,0,0,.7)';ctx.shadowBlur=8;
-    const sw=Math.max(2.5,width*.30);
-    ctx.beginPath();ctx.moveTo(-tail,sw*1.5);ctx.lineTo(-len*.18,sw);ctx.lineTo(len,sw);ctx.lineTo(len,-sw);ctx.lineTo(-len*.18,-sw);ctx.lineTo(-tail,-sw*1.5);ctx.closePath();ctx.fillStyle=color;ctx.fill();ctx.restore();
-  }else{hand(angle,len,width,color,shape);}
+  }else{hand(angle,len,width,color,shape);} // snowflake ('twodoor') and all other shapes share hand()'s geometry
 }
 
 function secHand(angle,len,color,lollipop){
